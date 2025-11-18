@@ -640,6 +640,7 @@ class SignupPage extends React.Component {
                   this.state.invitation !== undefined &&
                   this.state.invitation.email !== ""
                 }
+                defaultValue={this.state.email}
                 onChange={(e) => this.setState({email: e.target.value})}
               />
             </Form.Item>
