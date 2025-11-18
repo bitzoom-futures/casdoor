@@ -415,6 +415,7 @@ class App extends Component {
                       onLoginSuccess={(redirectUrl) => {this.onLoginSuccess(redirectUrl);}}
                       onUpdateAccount={(account) => this.onUpdateAccount(account)}
                       updataThemeData={this.setTheme}
+                      email={window.location.search.includes("email") ? new URLSearchParams(window.location.search).get("email") : undefined}
                     /> :
                     <Switch>
                       <Route exact path="/callback" render={(props) => <AuthCallback {...props} {...this.props} application={this.state.application} onLoginSuccess={(redirectUrl) => {this.onLoginSuccess(redirectUrl);}} />} />
