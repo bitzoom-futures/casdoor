@@ -5,7 +5,7 @@ module.exports = {
   devServer: {
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://119.8.50.236:8000",
         changeOrigin: true,
       },
       "/swagger": {
