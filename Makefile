@@ -2,10 +2,10 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= vincent2025
 IMG ?= futures_auth
-IMG_TAG ?=$(shell git --no-pager log -1 --format="%ad" --date=format:"%Y%m%d")-$(shell git describe --tags --always --dirty --abbrev=6)
+IMG_TAG ?= v0.1.0
 NAMESPACE ?= futures_auth
 APP ?= futures_auth
-HOST ?= test.com
+HOST ?= riverwa.com
 
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)

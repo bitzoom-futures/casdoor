@@ -56,6 +56,7 @@ ENV BUILDX_ARCH="${TARGETOS:-linux}_${TARGETARCH:-amd64}"
 
 RUN apt update
 RUN apt install -y ca-certificates && update-ca-certificates
+RUN apk add lsof
 
 WORKDIR /
 COPY --from=BACK /go/src/casdoor/server_${BUILDX_ARCH} ./server
