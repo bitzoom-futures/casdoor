@@ -12,7 +12,7 @@ RUN go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > 
 
 FROM alpine:latest AS STANDARD
 LABEL MAINTAINER="https://riverwa.com/"
-ARG USER=root
+ARG USER=casdoor
 ARG TARGETOS
 ARG TARGETARCH
 ENV BUILDX_ARCH="${TARGETOS:-linux}_${TARGETARCH:-amd64}"
