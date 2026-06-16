@@ -4,7 +4,8 @@
 set -euo pipefail
 
 DUMP_FILE="${1:-server-backup/auth_dump.sql.gz}"
-MYSQL_CONTAINER="${2:-infra-mysql}"
+ENV="${ENV:-prod}"
+MYSQL_CONTAINER="${2:-futures_auth-mysql-${ENV}}"
 DB_NAME="${DB_NAME:-auth}"
 DB_USER="${DB_USER:-auth_user}"
 DB_PASSWORD="${DB_PASSWORD:-}"
@@ -17,6 +18,7 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$MYSQL_CONTAINER"; then
   echo "❌ MySQL 容器 $MYSQL_CONTAINER 未运行"
+  echo "   请先部署 docker-compose.yml，或指定正确容器名"
   exit 1
 fi
 

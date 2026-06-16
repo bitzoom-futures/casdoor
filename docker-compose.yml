@@ -1,28 +1,50 @@
 name: futures_auth
 
-# Dokploy Compose 部署配置
+# Dokploy Compose 部署配置（独立新环境，自带 MySQL，不依赖 infra-mysql）
+#
 # 在 Dokploy 项目 Environment Variables 中设置：
-#   ENV           = test | staging | prod
-#   DOMAIN        = auth.test.riverwa.com | auth.staging.riverwa.com | auth.riverwa.com
-#   DB_USER       = auth_user
-#   DB_PASSWORD   = (MySQL 密码，含特殊字符可直接填写)
-#   DB_HOST       = infra-mysql
-#   DB_NAME       = auth
-#   STATIC_BASE_URL = https://www.riverwa.com
-#   ORIGIN        = https://auth.riverwa.com
+#   ENV                 = test | staging | prod
+#   DOMAIN              = auth.test.riverwa.com | auth.riverwa.com
+#   DB_USER             = auth_user
+#   DB_PASSWORD         = (应用数据库密码)
+#   MYSQL_ROOT_PASSWORD = (MySQL root 密码)
+#   DB_NAME             = auth
+#   STATIC_BASE_URL     = https://www.riverwa.com
+#   ORIGIN              = https://auth.riverwa.com
+#   MYSQL_EXTERNAL_PORT = (可选，如需从外部网络直连 MySQL，填如 3306)
 #
 # Dokploy 设置：
-#   类型: Compose
-#   分支: dokploy-deploy
-#   Compose 文件: docker-compose.yml
-#   开启 Auto Deploy（push 到 dokploy-deploy 分支自动部署）
+#   类型: Compose | 分支: dokploy-deploy | 文件: docker-compose.yml
+#   开启 Auto Deploy
 #
-# 前置条件：
-#   1. infra-network 和 dokploy-network 已存在（infrastructure 项目已部署）
-#   2. infra-mysql 已运行，auth 库和 auth_user 已创建
-#   3. 首次迁移需执行 scripts/restore-auth-db.sh 恢复数据
+# 首次部署后恢复数据：
+#   DB_PASSWORD=xxx ./scripts/restore-auth-db.sh server-backup/auth_dump.sql.gz
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: futures_auth-mysql-${ENV:-prod}
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${DB_NAME:-auth}
+      MYSQL_USER: ${DB_USER:-auth_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=500
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - internal
+    ports:
+      - "${MYSQL_EXTERNAL_PORT:-}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
   casdoor:
     build:
       context: .
@@ -30,6 +52,9 @@ services:
       target: STANDARD
     container_name: futures_auth-${ENV:-prod}
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
       TZ: Asia/Shanghai
       RUNNING_IN_DOCKER: "true"
@@ -46,7 +71,7 @@ services:
       logConfig: '{"adapter":"file", "filename": "logs/casdoor.log", "maxdays":10, "perm":"0770"}'
       DB_USER: ${DB_USER:-auth_user}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      DB_HOST: ${DB_HOST:-infra-mysql}
+      DB_HOST: mysql
     entrypoint:
       - /bin/sh
       - -c
@@ -69,7 +94,7 @@ services:
       - traefik.http.routers.futures-auth-${ENV:-prod}-http.middlewares=futures-auth-${ENV:-prod}-redirect
     networks:
       - dokploy-network
-      - infra-network
+      - internal
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 30s
@@ -78,10 +103,11 @@ services:
       start_period: 90s
 
 volumes:
+  mysql-data:
   casdoor-logs:
 
 networks:
   dokploy-network:
     external: true
-  infra-network:
-    external: true
+  internal:
+    driver: bridge
