@@ -30,7 +30,7 @@ import {EmailMfaType, SmsMfaType, TotpMfaType} from "./auth/MfaSetupPage";
 
 const {Option} = Select;
 
-export const ServerUrl = "http://localhost:8000";
+export let ServerUrl = "http://localhost:8000";
 
 export const StaticBaseUrl = "https://cdn.casbin.org";
 
@@ -484,10 +484,12 @@ export function getCountryImage(country) {
 }
 
 export function initServerUrl() {
-  // const hostname = window.location.hostname;
-  // if (hostname === "localhost") {
-  //   ServerUrl = `http://${hostname}:8000`;
-  // }
+  const hostname = window.location.hostname;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    ServerUrl = `http://${hostname}:8000`;
+  } else {
+    ServerUrl = window.location.origin;
+  }
 }
 
 export function isLocalhost() {
