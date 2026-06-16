@@ -17,10 +17,10 @@ name: futures_auth
 #   STATIC_BASE_URL=https://www.riverwa.com
 #   DB_NAME=auth
 #   DB_USER=auth_user
-#   DB_PASSWORD=bitZoom@2025_auth
+#   DB_PASSWORD=bitZoom2025_auth
 #   MYSQL_ROOT_PASSWORD=<自定义root密码>
-#   DATA_SOURCE_NAME=auth_user:bitZoom%402025_auth@tcp(mysql:3306)/
-#   （密码含 @ 时需 URL 编码为 %40）
+#   DATA_SOURCE_NAME=auth_user:bitZoom2025_auth@tcp(mysql:3306)/
+#   （DB 密码勿含 @，Go DSN 不会解码 %40）
 #
 # DNS：Cloudflare 将 auth.riverwa.com 源站设为 121.91.175.132
 
