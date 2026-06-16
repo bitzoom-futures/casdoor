@@ -19,6 +19,13 @@ name: futures_auth
 #
 # 首次部署后恢复数据：
 #   DB_PASSWORD=xxx ./scripts/restore-auth-db.sh server-backup/auth_dump.sql.gz
+#
+# 域名切换（auth.riverwa.com 从旧服切到新服）：
+#   1. 新环境 Deploy 成功 + 数据恢复完成
+#   2. 运行 ./scripts/verify-deploy.sh 确认新服务正常
+#   3. DNS 将 auth.riverwa.com A 记录改指向新 Dokploy 服务器 IP
+#   4. 等待 DNS 生效后再次 verify-deploy.sh
+#   5. 停止旧服务器 futures_auth 容器（159.138.158.177）
 
 services:
   mysql:
