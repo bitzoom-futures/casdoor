@@ -1,53 +1,44 @@
 name: futures_auth
 
-# Dokploy Compose 部署配置（独立新环境，自带 MySQL，不依赖 infra-mysql）
+# Dokploy Compose 自动部署（在 119.12.165.87 面板创建，目标服务器选 121.91.175.132）
 #
-# 在 Dokploy 项目 Environment Variables 中设置：
-#   ENV                 = test | staging | prod
-#   DOMAIN              = auth.test.riverwa.com | auth.riverwa.com
-#   DB_USER             = auth_user
-#   DB_PASSWORD         = (应用数据库密码)
-#   MYSQL_ROOT_PASSWORD = (MySQL root 密码)
-#   DB_NAME             = auth
-#   STATIC_BASE_URL     = https://www.riverwa.com
-#   ORIGIN              = https://auth.riverwa.com
-#   MYSQL_EXTERNAL_PORT = (可选，如需从外部网络直连 MySQL，填如 3306)
+# 项目设置：
+#   类型: Compose
+#   仓库: bitzoom-futures/casdoor
+#   分支: dokploy-deploy
+#   Compose 文件: docker-compose.yml
+#   服务器: 121.91.175.132（远程）
+#   Auto Deploy: 开启
 #
-# Dokploy 设置：
-#   类型: Compose | 分支: dokploy-deploy | 文件: docker-compose.yml
-#   开启 Auto Deploy
+# Environment Variables（全部必填，在 Dokploy 面板填写）：
+#   ENV=prod
+#   DOMAIN=auth.riverwa.com
+#   ORIGIN=https://auth.riverwa.com
+#   STATIC_BASE_URL=https://www.riverwa.com
+#   DB_NAME=auth
+#   DB_USER=auth_user
+#   DB_PASSWORD=bitZoom@2025_auth
+#   MYSQL_ROOT_PASSWORD=<自定义root密码>
+#   DATA_SOURCE_NAME=auth_user:bitZoom%402025_auth@tcp(mysql:3306)/
+#   （密码含 @ 时需 URL 编码为 %40）
 #
-# 首次部署后恢复数据：
-#   DB_PASSWORD=xxx ./scripts/restore-auth-db.sh server-backup/auth_dump.sql.gz
-#
-# 域名切换（auth.riverwa.com 从旧服切到新服）：
-#   1. 新环境 Deploy 成功 + 数据恢复完成
-#   2. 运行 ./scripts/verify-deploy.sh 确认新服务正常
-#   3. DNS 将 auth.riverwa.com A 记录改指向新 Dokploy 服务器 IP
-#   4. 等待 DNS 生效后再次 verify-deploy.sh
-#   5. 停止旧服务器 futures_auth 容器（159.138.158.177）
-#   测试机: 121.91.175.132（Dokploy Swarm 管理）
+# DNS：Cloudflare 将 auth.riverwa.com 源站设为 121.91.175.132
 
 services:
   mysql:
     image: mysql:8.0
-    container_name: futures_auth-mysql-${ENV:-prod}
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-auth}
       MYSQL_USER: ${DB_USER:-auth_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=500
     volumes:
       - mysql-data:/var/lib/mysql
-    networks:
-      - internal
-    ports:
-      - "${MYSQL_EXTERNAL_PORT:-}:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -58,7 +49,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: STANDARD
-    container_name: futures_auth-${ENV:-prod}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -71,21 +61,11 @@ services:
       runmode: prod
       dbName: ${DB_NAME:-auth}
       authState: auth
+      dataSourceName: ${DATA_SOURCE_NAME}
       staticBaseUrl: ${STATIC_BASE_URL:-https://www.riverwa.com}
       origin: ${ORIGIN:-https://auth.riverwa.com}
-      originFrontend: ${ORIGIN_FRONTEND:-}
-      initDataFile: ""
       initDataNewOnly: "true"
       logConfig: '{"adapter":"file", "filename": "logs/casdoor.log", "maxdays":10, "perm":"0770"}'
-      DB_USER: ${DB_USER:-auth_user}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      DB_HOST: mysql
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        export dataSourceName="$${DB_USER}:$${DB_PASSWORD}@tcp($${DB_HOST}:3306)/"
-        exec /server
     volumes:
       - casdoor-logs:/logs
     labels:
@@ -102,13 +82,7 @@ services:
       - traefik.http.routers.futures-auth-${ENV:-prod}-http.middlewares=futures-auth-${ENV:-prod}-redirect
     networks:
       - dokploy-network
-      - internal
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
+      - default
 
 volumes:
   mysql-data:
@@ -117,5 +91,3 @@ volumes:
 networks:
   dokploy-network:
     external: true
-  internal:
-    driver: bridge

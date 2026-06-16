@@ -5,7 +5,11 @@ set -euo pipefail
 
 DUMP_FILE="${1:-server-backup/auth_dump.sql.gz}"
 ENV="${ENV:-prod}"
-MYSQL_CONTAINER="${2:-futures_auth-mysql-${ENV}}"
+MYSQL_CONTAINER="${2:-}"
+if [ -z "$MYSQL_CONTAINER" ]; then
+  MYSQL_CONTAINER="$(docker ps --format '{{.Names}}' | grep -E 'futures_auth.*mysql|mysql-.*prod' | head -1)"
+  MYSQL_CONTAINER="${MYSQL_CONTAINER:-futures_auth-mysql-1}"
+fi
 DB_NAME="${DB_NAME:-auth}"
 DB_USER="${DB_USER:-auth_user}"
 DB_PASSWORD="${DB_PASSWORD:-}"
