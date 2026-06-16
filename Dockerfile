@@ -1,7 +1,12 @@
 FROM --platform=$BUILDPLATFORM node:18.19.0 AS FRONT
 WORKDIR /web
+ENV GENERATE_SOURCEMAP=false
+ENV CI=true
+COPY ./web/package.json ./web/yarn.lock ./
+RUN yarn install --frozen-lockfile --network-timeout 1000000
 COPY ./web .
-RUN yarn install --frozen-lockfile --network-timeout 1000000 && NODE_OPTIONS="--max-old-space-size=4096" yarn run build
+# 121 测试机仅 7.4GB RAM；4096 会在并行 go build 时 OOM
+RUN NODE_OPTIONS="--max-old-space-size=2048" yarn run build
 
 
 FROM --platform=$BUILDPLATFORM golang:1.21.13 AS BACK
