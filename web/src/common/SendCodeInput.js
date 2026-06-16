@@ -17,7 +17,7 @@ import React from "react";
 import i18next from "i18next";
 import * as UserBackend from "../backend/UserBackend";
 import * as Setting from "../Setting";
-import {SafetyOutlined} from "@ant-design/icons";
+// import { SafetyOutlined } from "@ant-design/icons";
 import {CaptchaModal} from "./modal/CaptchaModal";
 
 const {Search} = Input;
@@ -90,12 +90,12 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
         addonBefore={textBefore}
         disabled={disabled}
         value={value}
-        prefix={<SafetyOutlined />}
         placeholder={i18next.t("code:Enter your code")}
         className="verification-code-input"
         onChange={e => onChange(e.target.value)}
+        variant="filled"
         enterButton={
-          <Button style={{fontSize: 14}} type={"primary"} disabled={disabled || buttonLeftTime > 0} loading={buttonLoading}>
+          <Button style={{fontSize: 14}} type={"text"} disabled={disabled || buttonLeftTime > 0} loading={buttonLoading}>
             {buttonLeftTime > 0 ? `${buttonLeftTime} s` : buttonLoading ? i18next.t("code:Sending") : i18next.t("code:Send Code")}
           </Button>
         }

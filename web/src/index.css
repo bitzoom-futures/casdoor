@@ -67,3 +67,60 @@ code {
 .no-horizontal-scroll-editor [class*="CodeMirror-scroll"] {
   overflow-x: hidden !important;
 }
+
+/* ui 调整LoginPage */
+.login-panel .ant-tabs-tab-btn {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.login-panel .signin-methods .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #0006;
+}
+
+.login-panel-dark .signin-methods .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #fff6;
+}
+
+.login-form .ant-form-item {
+  margin-bottom: 32px !important;
+}
+
+.signin-methods > .ant-tabs-nav {
+  margin-bottom: 32px !important;
+}
+
+.signin-methods > .ant-tabs-tab {
+  padding-bottom: 18px;
+}
+
+.verification-code-input .ant-input-filled[disabled],
+.verification-code-input .ant-input-affix-wrapper-filled.ant-input-affix-wrapper-disabled {
+  border-color: transparent !important;
+}
+
+/* .login-panel .ant-input-filled,
+.login-panel .ant-input-affix-wrapper-filled {
+  background-color: #0000000A !important;
+} */
+
+.login-panel-dark .ant-input-filled,
+.login-panel-dark .ant-input-affix-wrapper-filled {
+  background-color: #ffffff0a !important;
+}
+
+.login-panel .ant-input::placeholder {
+  color: #0003;
+}
+
+.login-panel-dark .ant-input::placeholder {
+  color: #fff3;
+}
+
+.forget-content .ant-input::placeholder {
+  color: #0003;
+}
+
+.forget-content-dark .ant-input::placeholder {
+  color: #fff3;
+}

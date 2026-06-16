@@ -21,7 +21,7 @@ import * as Setting from "../Setting";
 import i18next from "i18next";
 import {SendCodeInput} from "../common/SendCodeInput";
 import * as UserBackend from "../backend/UserBackend";
-import {ArrowLeftOutlined, CheckCircleOutlined, KeyOutlined, LockOutlined, SolutionOutlined, UserOutlined} from "@ant-design/icons";
+import {ArrowLeftOutlined, KeyOutlined, SolutionOutlined, UserOutlined} from "@ant-design/icons";
 import CustomGithubCorner from "../common/CustomGithubCorner";
 import {withRouter} from "react-router-dom";
 import * as PasswordChecker from "../common/PasswordChecker";
@@ -278,13 +278,13 @@ class ForgetPage extends React.Component {
               ]}
             >
               <Input
-                prefix={<UserOutlined />}
+                variant="filled"
                 placeholder={i18next.t("login:username, Email or phone")}
               />
             </Form.Item>
             <br />
             <Form.Item>
-              <Button block type="primary" htmlType="submit">
+              <Button block type="primary" htmlType="submit" style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}>
                 {i18next.t("forget:Next Step")}
               </Button>
             </Form.Item>
@@ -377,6 +377,7 @@ class ForgetPage extends React.Component {
               block
               type="primary"
               htmlType="submit"
+              style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}
             >
               {i18next.t("forget:Next Step")}
             </Button>
@@ -444,7 +445,7 @@ class ForgetPage extends React.Component {
                 hasFeedback
               >
                 <Input.Password
-                  prefix={<LockOutlined />}
+                  variant="filled"
                   placeholder={i18next.t("general:Password")}
                   onChange={(e) => {
                     this.setState({
@@ -487,13 +488,13 @@ class ForgetPage extends React.Component {
               ]}
             >
               <Input.Password
-                prefix={<CheckCircleOutlined />}
+                variant="filled"
                 placeholder={i18next.t("signup:Confirm")}
               />
             </Form.Item>
             <br />
             <Form.Item hidden={this.state.current !== 2}>
-              <Button block type="primary" htmlType="submit">
+              <Button block type="primary" htmlType="submit" style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}>
                 {i18next.t("forget:Change Password")}
               </Button>
             </Form.Item>
@@ -526,7 +527,7 @@ class ForgetPage extends React.Component {
     return (
       <React.Fragment>
         <CustomGithubCorner />
-        <div className="forget-content" style={{
+        <div className={Setting.isDarkTheme(this.props.themeAlgorithm) ? "forget-content forget-content-dark" : "forget-content"} style={{
           padding: Setting.isMobile() ? "0" : null,
           boxShadow: Setting.isMobile() ? "none" : null,
           backgroundColor: Setting.isDarkTheme(this.props.themeAlgorithm) ? "#000000" : null,

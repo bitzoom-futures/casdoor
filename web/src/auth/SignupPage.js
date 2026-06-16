@@ -44,10 +44,10 @@ import * as InvitationBackend from "../backend/InvitationBackend";
 const formItemLayout = {
   labelCol: {
     xs: {
-      span: 24,
+      span: 0,
     },
     sm: {
-      span: 8,
+      span: 0,
     },
   },
   wrapperCol: {
@@ -55,7 +55,7 @@ const formItemLayout = {
       span: 24,
     },
     sm: {
-      span: 16,
+      span: 24,
     },
   },
 };
@@ -63,7 +63,6 @@ const formItemLayout = {
 const renderFormItem = (signupItem) => {
   const commonProps = {
     name: signupItem.name.toLowerCase(),
-    label: signupItem.label || signupItem.name,
     rules: [
       {
         required: signupItem.required,
@@ -77,7 +76,7 @@ const renderFormItem = (signupItem) => {
   if (!signupItem.type || signupItem.type === "Input") {
     return (
       <Form.Item {...commonProps}>
-        <Input placeholder={signupItem.placeholder} />
+        <Input variant="filled" placeholder={signupItem.label || signupItem.name} />
       </Form.Item>
     );
   } else if (
@@ -107,8 +106,8 @@ export const tailFormItemLayout = {
       offset: 0,
     },
     sm: {
-      span: 16,
-      offset: 8,
+      span: 24,
+      offset: 0,
     },
   },
 };
@@ -155,8 +154,7 @@ class SignupPage extends React.Component {
       } else {
         Setting.showMessage(
           "error",
-          `${i18next.t("general:Unknown application name")}: ${
-            this.state.applicationName
+          `${i18next.t("general:Unknown application name")}: ${this.state.applicationName
           }`
         );
         this.onUpdateApplication(null);
@@ -351,9 +349,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="username"
           className="signup-username"
-          label={
-            signupItem.label ? signupItem.label : i18next.t("signup:Username")
-          }
           rules={[
             {
               required: required,
@@ -362,9 +357,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-username-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("signup:Username")}
             disabled={
               this.state.invitation !== undefined &&
               this.state.invitation.username !== ""
@@ -379,11 +374,6 @@ class SignupPage extends React.Component {
             <Form.Item
               name="firstName"
               className="signup-first-name"
-              label={
-                signupItem.label
-                  ? signupItem.label
-                  : i18next.t("general:First name")
-              }
               rules={[
                 {
                   required: required,
@@ -392,19 +382,14 @@ class SignupPage extends React.Component {
                 },
               ]}
             >
-              <Input
+              <Input variant="filled"
                 className="signup-first-name-input"
-                placeholder={signupItem.placeholder}
+                placeholder={signupItem.label ? signupItem.label : i18next.t("general:First name")}
               />
             </Form.Item>
             <Form.Item
               name="lastName"
               className="signup-last-name"
-              label={
-                signupItem.label
-                  ? signupItem.label
-                  : i18next.t("general:Last name")
-              }
               rules={[
                 {
                   required: required,
@@ -413,9 +398,9 @@ class SignupPage extends React.Component {
                 },
               ]}
             >
-              <Input
+              <Input variant="filled"
                 className="signup-last-name-input"
-                placeholder={signupItem.placeholder}
+                placeholder={signupItem.label ? signupItem.label : i18next.t("general:Last name")}
               />
             </Form.Item>
           </React.Fragment>
@@ -426,29 +411,27 @@ class SignupPage extends React.Component {
         <Form.Item
           name="name"
           className="signup-name"
-          label={
-            signupItem.label
-              ? signupItem.label
-              : signupItem.rule === "Real name" ||
-                signupItem.rule === "First, last"
-                ? i18next.t("general:Real name")
-                : i18next.t("general:Display name")
-          }
           rules={[
             {
               required: required,
               message:
                 signupItem.rule === "Real name" ||
-                signupItem.rule === "First, last"
+                  signupItem.rule === "First, last"
                   ? i18next.t("signup:Please input your real name!")
                   : i18next.t("signup:Please input your display name!"),
               whitespace: true,
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-name-input"
-            placeholder={signupItem.placeholder}
+            placeholder={
+              signupItem.label
+                ? signupItem.label
+                : signupItem.rule === "Real name" || signupItem.rule === "First, last"
+                  ? i18next.t("general:Real name")
+                  : i18next.t("general:Display name")
+            }
           />
         </Form.Item>
       );
@@ -460,11 +443,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="firstName"
           className="signup-first-name"
-          label={
-            signupItem.label
-              ? signupItem.label
-              : i18next.t("general:First name")
-          }
           rules={[
             {
               required: required,
@@ -473,9 +451,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-first-name-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("general:First name")}
           />
         </Form.Item>
       );
@@ -487,9 +465,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="lastName"
           className="signup-last-name"
-          label={
-            signupItem.label ? signupItem.label : i18next.t("general:Last name")
-          }
           rules={[
             {
               required: required,
@@ -498,9 +473,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-last-name-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("general:Last name")}
           />
         </Form.Item>
       );
@@ -509,9 +484,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="affiliation"
           className="signup-affiliation"
-          label={
-            signupItem.label ? signupItem.label : i18next.t("user:Affiliation")
-          }
           rules={[
             {
               required: required,
@@ -520,9 +492,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-affiliation-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("user:Affiliation")}
           />
         </Form.Item>
       );
@@ -531,9 +503,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="idCard"
           className="signup-idcard"
-          label={
-            signupItem.label ? signupItem.label : i18next.t("user:ID card")
-          }
           rules={[
             {
               required: required,
@@ -552,9 +521,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-idcard-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("user:ID card")}
           />
         </Form.Item>
       );
@@ -563,11 +532,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="country_region"
           className="signup-country-region"
-          label={
-            signupItem.label
-              ? signupItem.label
-              : i18next.t("user:Country/Region")
-          }
           rules={[
             {
               required: required,
@@ -595,9 +559,6 @@ class SignupPage extends React.Component {
             <Form.Item
               name="email"
               className="signup-email"
-              label={
-                signupItem.label ? signupItem.label : i18next.t("general:Email")
-              }
               rules={[
                 {
                   required: required,
@@ -633,9 +594,9 @@ class SignupPage extends React.Component {
                 },
               ]}
             >
-              <Input
+              <Input variant="filled"
                 className="signup-email-input"
-                placeholder={signupItem.placeholder}
+                placeholder={signupItem.label ? signupItem.label : i18next.t("general:Email")}
                 disabled={
                   this.state.invitation !== undefined &&
                   this.state.invitation.email !== ""
@@ -648,11 +609,6 @@ class SignupPage extends React.Component {
               <Form.Item
                 name="emailCode"
                 className="signup-email-code"
-                label={
-                  signupItem.label
-                    ? signupItem.label
-                    : i18next.t("code:Email code")
-                }
                 rules={[
                   {
                     required: required,
@@ -684,9 +640,6 @@ class SignupPage extends React.Component {
           <React.Fragment>
             <Form.Item
               className="signup-phone"
-              label={
-                signupItem.label ? signupItem.label : i18next.t("general:Phone")
-              }
               required={required}
             >
               <Input.Group compact>
@@ -745,9 +698,9 @@ class SignupPage extends React.Component {
                     }),
                   ]}
                 >
-                  <Input
+                  <Input variant="filled"
                     className="signup-phone-input"
-                    placeholder={signupItem.placeholder}
+                    placeholder={signupItem.label ? signupItem.label : i18next.t("general:Phone")}
                     style={{width: "65%"}}
                     disabled={
                       this.state.invitation !== undefined &&
@@ -762,11 +715,6 @@ class SignupPage extends React.Component {
               <Form.Item
                 name="phoneCode"
                 className="phone-code"
-                label={
-                  signupItem.label
-                    ? signupItem.label
-                    : i18next.t("code:Phone code")
-                }
                 rules={[
                   {
                     required: required,
@@ -860,11 +808,6 @@ class SignupPage extends React.Component {
           <Form.Item
             name="password"
             className="signup-password"
-            label={
-              signupItem.label
-                ? signupItem.label
-                : i18next.t("general:Password")
-            }
             rules={[
               {
                 required: required,
@@ -884,9 +827,9 @@ class SignupPage extends React.Component {
             ]}
             hasFeedback
           >
-            <Input.Password
+            <Input.Password variant="filled"
               className="signup-password-input"
-              placeholder={signupItem.placeholder}
+              placeholder={signupItem.label ? signupItem.label : i18next.t("general:Password")}
               onChange={(e) => {
                 this.setState({
                   passwordPopover: PasswordChecker.renderPasswordPopover(
@@ -919,9 +862,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="confirm"
           className="signup-confirm"
-          label={
-            signupItem.label ? signupItem.label : i18next.t("signup:Confirm")
-          }
           dependencies={["password"]}
           hasFeedback
           rules={[
@@ -944,7 +884,7 @@ class SignupPage extends React.Component {
             }),
           ]}
         >
-          <Input.Password placeholder={signupItem.placeholder} />
+          <Input.Password variant="filled" placeholder={signupItem.label ? signupItem.label : i18next.t("signup:Confirm")} />
         </Form.Item>
       );
     } else if (signupItem.name === "Invitation code") {
@@ -952,11 +892,6 @@ class SignupPage extends React.Component {
         <Form.Item
           name="invitationCode"
           className="signup-invitation-code"
-          label={
-            signupItem.label
-              ? signupItem.label
-              : i18next.t("application:Invitation code")
-          }
           rules={[
             {
               required: required,
@@ -964,9 +899,9 @@ class SignupPage extends React.Component {
             },
           ]}
         >
-          <Input
+          <Input variant="filled"
             className="signup-invitation-code-input"
-            placeholder={signupItem.placeholder}
+            placeholder={signupItem.label ? signupItem.label : i18next.t("application:Invitation code")}
             disabled={
               this.state.invitation !== undefined &&
               this.state.invitation !== ""
@@ -986,7 +921,7 @@ class SignupPage extends React.Component {
     } else if (signupItem.name === "Signup button") {
       return (
         <Form.Item {...tailFormItemLayout}>
-          <Button type="primary" htmlType="submit" className="signup-button">
+          <Button type="primary" htmlType="submit" className="signup-button" style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}>
             {i18next.t("account:Sign Up")}
           </Button>
           &nbsp;&nbsp;{i18next.t("signup:Have account?")}&nbsp;

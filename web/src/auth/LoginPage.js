@@ -14,7 +14,8 @@
 
 import React, {Suspense, lazy} from "react";
 import {Button, Checkbox, Col, Form, Input, Result, Spin, Tabs, message} from "antd";
-import {ArrowLeftOutlined, LockOutlined, UserOutlined} from "@ant-design/icons";
+// import { ArrowLeftOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
+import {ArrowLeftOutlined} from "@ant-design/icons";
 import {withRouter} from "react-router-dom";
 import * as UserWebauthnBackend from "../backend/UserWebauthnBackend";
 import OrganizationSelect from "../common/select/OrganizationSelect";
@@ -213,7 +214,7 @@ class LoginPage extends React.Component {
             this.setState({
               msg: res.msg,
             });
-            return ;
+            return;
           }
           this.onUpdateApplication(res.data);
         });
@@ -820,7 +821,7 @@ class LoginPage extends React.Component {
             <Input
               id="input"
               className="login-username-input"
-              prefix={<UserOutlined className="site-form-item-icon" />}
+              variant="filled"
               placeholder={this.getPlaceholder(signinItem.placeholder)}
               onChange={e => {
                 this.setState({
@@ -851,12 +852,12 @@ class LoginPage extends React.Component {
           <div dangerouslySetInnerHTML={{__html: ("<style>" + signinItem.customCss?.replaceAll("<style>", "").replaceAll("</style>", "") + "</style>")}} />
           <div className="login-forget-password">
             <Form.Item name="autoSignin" valuePropName="checked" noStyle>
-              <Checkbox style={{float: "left"}}>
+              <Checkbox style={{float: "left", color: Setting.getHintTextColor(this.props.themeAlgorithm)}}>
                 {i18next.t("login:Auto sign in")}
               </Checkbox>
             </Form.Item>
             {
-              signinItem.visible ? Setting.renderForgetLink(application, signinItem.label ? signinItem.label : i18next.t("login:Forgot password?")) : null
+              signinItem.visible ? Setting.renderForgetLink(application, signinItem.label ? signinItem.label : i18next.t("login:Forgot password?"), {color: Setting.getHintTextColor(this.props.themeAlgorithm)}) : null
             }
           </div>
         </div>
@@ -875,6 +876,7 @@ class LoginPage extends React.Component {
             type="primary"
             htmlType="submit"
             className="login-button"
+            style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}
           >
             {
               this.state.loginMethod === "webAuthn" ? i18next.t("login:Sign in with WebAuthn") :
@@ -1015,7 +1017,8 @@ class LoginPage extends React.Component {
 
     const showForm = Setting.isPasswordEnabled(application) || Setting.isCodeSigninEnabled(application) || Setting.isWebAuthnEnabled(application) || Setting.isLdapEnabled(application) || Setting.isFaceIdEnabled(application);
     if (showForm) {
-      let loginWidth = 320;
+      // let loginWidth = 320;
+      let loginWidth = 400;
       if (Setting.getLanguage() === "fr") {
         loginWidth += 20;
       } else if (Setting.getLanguage() === "es") {
@@ -1137,9 +1140,11 @@ class LoginPage extends React.Component {
       visible={this.state.openCaptchaModal}
       noModal={noModal}
       onUpdateToken={(captchaType, captchaToken, clientSecret) => {
-        this.setState({captchaValues: {
-          captchaType, captchaToken, clientSecret,
-        }});
+        this.setState({
+          captchaValues: {
+            captchaType, captchaToken, clientSecret,
+          },
+        });
       }}
       onOk={(captchaType, captchaToken, clientSecret) => {
         const values = this.state.values;
@@ -1164,7 +1169,7 @@ class LoginPage extends React.Component {
             signinItem.label ? Setting.renderSignupLink(application, signinItem.label) :
               (
                 <React.Fragment>
-                  {i18next.t("login:No account?")}&nbsp;
+                  <span style={{color: Setting.getHintTextColor(this.props.themeAlgorithm)}}>{i18next.t("login:No account?")}&nbsp;</span>
                   {
                     Setting.renderSignupLink(application, i18next.t("login:sign up now"))
                   }
@@ -1325,8 +1330,8 @@ class LoginPage extends React.Component {
             >
               <Input.Password
                 className="login-password-input"
-                prefix={<LockOutlined className="site-form-item-icon" />}
                 type="password"
+                variant="filled"
                 placeholder={signinItem.placeholder ? signinItem.placeholder : i18next.t("general:Password")}
                 disabled={this.state.loginMethod === "password" ? !Setting.isPasswordEnabled(application) : !Setting.isLdapEnabled(application)}
               />

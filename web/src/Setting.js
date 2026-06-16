@@ -30,7 +30,7 @@ import {EmailMfaType, SmsMfaType, TotpMfaType} from "./auth/MfaSetupPage";
 
 const {Option} = Select;
 
-export let ServerUrl = "http://localhost:8000";
+export let ServerUrl = "";
 
 export const StaticBaseUrl = "https://cdn.casbin.org";
 
@@ -1287,14 +1287,14 @@ export function redirectToLoginPage(application, history) {
   }
 }
 
-function renderLink(url, text, onClick) {
+function renderLink(url, text, onClick, style) {
   if (url === null) {
     return null;
   }
 
   if (url.startsWith("/")) {
     return (
-      <Link style={{float: "right"}} to={url} onClick={() => {
+      <Link style={{float: "right", ...style}} to={url} onClick={() => {
         if (onClick !== null) {
           onClick();
         }
@@ -1302,7 +1302,7 @@ function renderLink(url, text, onClick) {
     );
   } else if (url.startsWith("http")) {
     return (
-      <a style={{float: "right"}} href={url} onClick={() => {
+      <a style={{float: "right", ...style}} href={url} onClick={() => {
         if (onClick !== null) {
           onClick();
         }
@@ -1339,7 +1339,7 @@ export function renderSignupLink(application, text) {
   return renderLink(url + window.location.search, text, storeSigninUrl);
 }
 
-export function renderForgetLink(application, text) {
+export function renderForgetLink(application, text, style) {
   let url;
   if (application === null) {
     url = null;
@@ -1357,7 +1357,7 @@ export function renderForgetLink(application, text) {
     sessionStorage.setItem("signinUrl", window.location.pathname + window.location.search);
   };
 
-  return renderLink(url, text, storeSigninUrl);
+  return renderLink(url, text, storeSigninUrl, style);
 }
 
 export function renderHelmet(application) {
@@ -1830,6 +1830,18 @@ export function isDarkTheme(themeAlgorithm) {
   return themeAlgorithm && themeAlgorithm.includes("dark");
 }
 
+// 提示文本颜色配置：亮色 #00000080，暗色 #FFFFFF80
+export function getHintTextColor(themeAlgorithm) {
+  return isDarkTheme(themeAlgorithm) ? "#FFFFFF80" : "#00000080";
+}
+
+// 主操作按钮颜色配置：亮色背景 #000000E5/字体 #FFFFFFE5，暗色背景 #FFFFFFE5/字体 #000000E5
+export function getPrimaryButtonStyle(themeAlgorithm) {
+  return isDarkTheme(themeAlgorithm)
+    ? {backgroundColor: "#FFFFFFE5", color: "#000000E5", borderColor: "transparent"}
+    : {backgroundColor: "#000000E5", color: "#FFFFFFE5", borderColor: "transparent"};
+}
+
 function getPreferredMfaProp(mfaProps) {
   for (const i in mfaProps) {
     if (mfaProps[i].isPreferred) {
@@ -1906,8 +1918,8 @@ function renderMfaAuthVerifyForm(values, authParams, onSuccess, componentThis) {
             let mfaI18n = "";
             switch (mfa.mfaType) {
             case SmsMfaType: mfaI18n = i18next.t("mfa:Use SMS"); break;
-            case TotpMfaType: mfaI18n = i18next.t("mfa:Use Authenticator App"); break ;
-            case EmailMfaType: mfaI18n = i18next.t("mfa:Use Email") ;break;
+            case TotpMfaType: mfaI18n = i18next.t("mfa:Use Authenticator App"); break;
+            case EmailMfaType: mfaI18n = i18next.t("mfa:Use Email"); break;
             }
             return <div key={mfa.mfaType}><Button type={"link"} onClick={() => {
               componentThis.setState({
