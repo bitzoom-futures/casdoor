@@ -18,6 +18,9 @@ vendor/
 bin/
 
 .idea/
+
+# 服务器备份文件（含生产数据库和明文密码，严禁提交）
+server-backup/
 *.iml
 .vscode/settings.json
 

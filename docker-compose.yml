@@ -1,27 +1,87 @@
-version: '3.1'
+name: futures_auth
+
+# Dokploy Compose 部署配置
+# 在 Dokploy 项目 Environment Variables 中设置：
+#   ENV           = test | staging | prod
+#   DOMAIN        = auth.test.riverwa.com | auth.staging.riverwa.com | auth.riverwa.com
+#   DB_USER       = auth_user
+#   DB_PASSWORD   = (MySQL 密码，含特殊字符可直接填写)
+#   DB_HOST       = infra-mysql
+#   DB_NAME       = auth
+#   STATIC_BASE_URL = https://www.riverwa.com
+#   ORIGIN        = https://auth.riverwa.com
+#
+# Dokploy 设置：
+#   类型: Compose
+#   分支: dokploy-deploy
+#   Compose 文件: docker-compose.yml
+#   开启 Auto Deploy（push 到 dokploy-deploy 分支自动部署）
+#
+# 前置条件：
+#   1. infra-network 和 dokploy-network 已存在（infrastructure 项目已部署）
+#   2. infra-mysql 已运行，auth 库和 auth_user 已创建
+#   3. 首次迁移需执行 scripts/restore-auth-db.sh 恢复数据
+
 services:
   casdoor:
-    restart: always
     build:
-      context: ./
+      context: .
       dockerfile: Dockerfile
       target: STANDARD
-    entrypoint: /bin/sh -c './server --createDatabase=true'
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
+    container_name: futures_auth-${ENV:-prod}
+    restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       RUNNING_IN_DOCKER: "true"
+      appname: futures_auth
+      httpport: "8000"
+      runmode: prod
+      dbName: ${DB_NAME:-auth}
+      authState: auth
+      staticBaseUrl: ${STATIC_BASE_URL:-https://www.riverwa.com}
+      origin: ${ORIGIN:-https://auth.riverwa.com}
+      originFrontend: ${ORIGIN_FRONTEND:-}
+      initDataFile: ""
+      initDataNewOnly: "true"
+      logConfig: '{"adapter":"file", "filename": "logs/casdoor.log", "maxdays":10, "perm":"0770"}'
+      DB_USER: ${DB_USER:-auth_user}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_HOST: ${DB_HOST:-infra-mysql}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export dataSourceName="$${DB_USER}:$${DB_PASSWORD}@tcp($${DB_HOST}:3306)/"
+        exec /server
     volumes:
-      - ./conf:/conf/
-  db:
-    restart: always
-    image: mysql:8.0.25
-    platform: linux/amd64
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: 123456
-    volumes:
-      - /usr/local/docker/mysql:/var/lib/mysql
+      - casdoor-logs:/logs
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.futures-auth-${ENV:-prod}.rule=Host(`${DOMAIN:-auth.riverwa.com}`)
+      - traefik.http.routers.futures-auth-${ENV:-prod}.entrypoints=websecure
+      - traefik.http.routers.futures-auth-${ENV:-prod}.tls=true
+      - traefik.http.routers.futures-auth-${ENV:-prod}.tls.certresolver=letsencrypt
+      - traefik.http.services.futures-auth-${ENV:-prod}.loadbalancer.server.port=8000
+      - traefik.http.middlewares.futures-auth-${ENV:-prod}-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.futures-auth-${ENV:-prod}-http.rule=Host(`${DOMAIN:-auth.riverwa.com}`)
+      - traefik.http.routers.futures-auth-${ENV:-prod}-http.entrypoints=web
+      - traefik.http.routers.futures-auth-${ENV:-prod}-http.middlewares=futures-auth-${ENV:-prod}-redirect
+    networks:
+      - dokploy-network
+      - infra-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  casdoor-logs:
+
+networks:
+  dokploy-network:
+    external: true
+  infra-network:
+    external: true
