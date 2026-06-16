@@ -26,6 +26,7 @@ name: futures_auth
 #   3. DNS 将 auth.riverwa.com A 记录改指向新 Dokploy 服务器 IP
 #   4. 等待 DNS 生效后再次 verify-deploy.sh
 #   5. 停止旧服务器 futures_auth 容器（159.138.158.177）
+#   测试机: 121.91.175.132（Dokploy Swarm 管理）
 
 services:
   mysql:

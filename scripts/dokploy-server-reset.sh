@@ -1,6 +1,6 @@
 #!/bin/bash
 # 测试机全量清理（保留 Dokploy + Traefik 核心）
-# 用法: ssh -i ~/.ssh/futures root@183.87.44.50 'bash -s' < scripts/dokploy-server-reset.sh
+# 用法: ssh -i ~/.ssh/futures root@121.91.175.132 'bash -s' < scripts/dokploy-server-reset.sh
 set -euo pipefail
 
 KEEP_REGEX='dokploy|traefik'

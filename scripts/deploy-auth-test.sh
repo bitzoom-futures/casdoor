@@ -1,8 +1,8 @@
 #!/bin/bash
-# 在 183.87.44.50 测试机部署 auth 的完整流程（本地执行）
+# 在 121.91.175.132 测试机部署 auth 的完整流程（本地执行）
 set -euo pipefail
 
-SERVER="root@183.87.44.50"
+SERVER="root@121.91.175.132"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/futures}"
 REMOTE_DIR="/opt/futures_auth"
 DUMP_LOCAL="${1:-server-backup/auth_dump.sql.gz}"
