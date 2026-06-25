@@ -124,3 +124,9 @@ code {
 .forget-content-dark .ant-input::placeholder {
   color: #fff3;
 }
+
+.ant-input-lg,
+.ant-input-affix-wrapper-lg,
+.ant-input-group-addon {
+  border-radius: 8px !important;
+}

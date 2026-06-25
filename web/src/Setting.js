@@ -486,7 +486,7 @@ export function getCountryImage(country) {
 export function initServerUrl() {
   const hostname = window.location.hostname;
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    ServerUrl = `http://${hostname}:8000`;
+    ServerUrl = window.location.origin;
   } else {
     ServerUrl = window.location.origin;
   }
