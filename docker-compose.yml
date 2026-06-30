@@ -62,7 +62,7 @@ services:
       dbName: ${DB_NAME:-auth}
       authState: auth
       dataSourceName: ${DATA_SOURCE_NAME}
-      staticBaseUrl: ${STATIC_BASE_URL:-https://auth.riverwa.com}
+      staticBaseUrl: ${STATIC_BASE_URL:-https://test.riverwa.com}
       origin: ${ORIGIN:-https://auth.riverwa.com}
       initDataNewOnly: "true"
       logConfig: '{"adapter":"file", "filename": "logs/casdoor.log", "maxdays":10, "perm":"0770"}'
