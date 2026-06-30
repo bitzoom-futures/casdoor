@@ -94,8 +94,8 @@ export function getAlgorithmNames(themeData) {
   return algorithms;
 }
 
-export function getLogo(themes) {
-  if (themes.includes("dark")) {
+export function getLogo(themeAlgorithm) {
+  if (isDarkTheme(themeAlgorithm)) {
     return `${StaticBaseUrl}/img/casdoor-logo_1185x256_dark.png`;
   } else {
     return `${StaticBaseUrl}/img/casdoor-logo_1185x256.png`;
