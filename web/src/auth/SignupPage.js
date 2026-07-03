@@ -15,6 +15,7 @@
 import React from "react";
 import {
   Button,
+  Divider,
   Form,
   Input,
   Popover,
@@ -949,7 +950,8 @@ class SignupPage extends React.Component {
       if (signupItem.rule === "None" || signupItem.rule === "") {
         signupItem.rule = showForm ? "small" : "big";
       }
-      return application.providers
+      const hasVisibleProviders = (application.providers ?? []).some((providerItem) => this.isProviderVisible(providerItem));
+      const providerButtons = application.providers
         .filter((providerItem) => this.isProviderVisible(providerItem))
         .map((providerItem, id) => {
           return (
@@ -982,6 +984,16 @@ class SignupPage extends React.Component {
             </span>
           );
         });
+      return (
+        <React.Fragment>
+          {
+            showForm && hasVisibleProviders ? (
+              <Divider className="login-more-divider" plain>{i18next.t("signup:More sign-up methods")}</Divider>
+            ) : null
+          }
+          {providerButtons}
+        </React.Fragment>
+      );
     } else if (validItems.includes(signupItem.name)) {
       return renderFormItem(signupItem);
     }
@@ -1060,6 +1072,7 @@ class SignupPage extends React.Component {
         layout={Setting.isMobile() ? "vertical" : "horizontal"}
         style={{width: Setting.isMobile() ? "300px" : "400px"}}
       >
+        <div className="login-mobile-title">{i18next.t("account:Sign Up")}</div>
         <Form.Item
           name="application"
           hidden={true}
@@ -1082,7 +1095,7 @@ class SignupPage extends React.Component {
         ></Form.Item>
         {application.signupItems?.map((signupItem, idx) => {
           return (
-            <div key={idx}>
+            <div key={idx} className={signupItem.name === "Providers" ? "login-providers-box" : undefined}>
               <div
                 dangerouslySetInnerHTML={{
                   __html: "<style>" + signupItem.customCss + "</style>",

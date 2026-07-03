@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import React, {Suspense, lazy} from "react";
-import {Button, Checkbox, Col, Form, Input, Result, Spin, Tabs, message} from "antd";
+import {Button, Checkbox, Col, Divider, Form, Input, Result, Spin, Tabs, message} from "antd";
 // import { ArrowLeftOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import {ArrowLeftOutlined} from "@ant-design/icons";
 import {withRouter} from "react-router-dom";
@@ -825,6 +825,7 @@ class LoginPage extends React.Component {
               id="input"
               className="login-username-input"
               variant="filled"
+              allowClear
               placeholder={this.getPlaceholder(signinItem.placeholder)}
               onChange={e => {
                 this.setState({
@@ -922,12 +923,18 @@ class LoginPage extends React.Component {
       if (signinItem.rule === "None" || signinItem.rule === "") {
         signinItem.rule = showForm ? "small" : "big";
       }
+      const hasVisibleProviders = (application.providers ?? []).some(providerItem => this.isProviderVisible(providerItem));
       const searchParams = new URLSearchParams(window.location.search);
       const providerHint = searchParams.get("provider_hint");
 
       return (
-        <div key={resultItemKey}>
+        <div key={resultItemKey} className="login-providers-box">
           <div dangerouslySetInnerHTML={{__html: ("<style>" + signinItem.customCss?.replaceAll("<style>", "").replaceAll("</style>", "") + "</style>")}} />
+          {
+            showForm && hasVisibleProviders ? (
+              <Divider className="login-more-divider" plain>{i18next.t("login:More sign-in methods")}</Divider>
+            ) : null
+          }
           <Form.Item>
             {
               application.providers.filter(providerItem => this.isProviderVisible(providerItem)).map((providerItem, id) => {
@@ -1047,6 +1054,7 @@ class LoginPage extends React.Component {
           size="large"
           ref={this.form}
         >
+          <div className="login-mobile-title">{i18next.t("login:Sign In")}</div>
           <Form.Item
             hidden={true}
             name="application"
