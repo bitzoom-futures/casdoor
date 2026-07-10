@@ -66,6 +66,9 @@ class EntryPage extends React.Component {
 
   render() {
     const onUpdateApplication = (application) => {
+      if (application !== null) {
+        application.logo = Setting.getLogo(this.props.themeAlgorithm);
+      }
       this.setState({
         application: application,
       });
