@@ -925,23 +925,26 @@ class SignupPage extends React.Component {
     } else if (signupItem.name === "Signup button") {
       return (
         <Form.Item {...tailFormItemLayout}>
-          <Button type="primary" htmlType="submit" className="signup-button" style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}>
+          <Button type="primary" htmlType="submit" className="signup-button" style={{...Setting.getPrimaryButtonStyle(this.props.themeAlgorithm), width: "100%"}}>
             {i18next.t("account:Sign Up")}
           </Button>
-          &nbsp;&nbsp;{i18next.t("signup:Have account?")}&nbsp;
-          <a
-            className="signup-link"
-            onClick={() => {
-              const linkInStorage = sessionStorage.getItem("signinUrl");
-              if (linkInStorage !== null && linkInStorage !== "") {
-                Setting.goToLinkSoft(this, linkInStorage);
-              } else {
-                Setting.redirectToLoginPage(application, this.props.history);
-              }
-            }}
-          >
-            {i18next.t("signup:sign in now")}
-          </a>
+          <div style={{marginTop: "14px"}}>
+            {i18next.t("signup:Have account?")}
+            <a
+              className="signup-link"
+              onClick={() => {
+                const linkInStorage = sessionStorage.getItem("signinUrl");
+                if (linkInStorage !== null && linkInStorage !== "") {
+                  Setting.goToLinkSoft(this, linkInStorage);
+                } else {
+                  Setting.redirectToLoginPage(application, this.props.history);
+                }
+              }}
+            >
+              {i18next.t("signup:sign in now")}
+            </a>
+          </div>
+
         </Form.Item>
       );
     } else if (signupItem.name === "Providers") {
@@ -958,12 +961,12 @@ class SignupPage extends React.Component {
         .filter((providerItem) => this.isProviderVisible(providerItem))
         .map((providerItem, id) => {
           return (
-            <span
+            <Button
+              variant="outlined"
               key={id}
               onClick={(e) => {
                 const agreementChecked =
                   this.form.current.getFieldValue("agreement");
-
                 if (
                   agreementChecked !== undefined &&
                   typeof agreementChecked === "boolean" &&
@@ -975,16 +978,27 @@ class SignupPage extends React.Component {
                   );
                 }
               }}
+              style={{width: "100%"}}
             >
               {ProviderButton.renderProviderLogo(
                 providerItem.provider,
                 application,
-                null,
+                24,
                 null,
                 signupItem.rule,
                 this.props.location
               )}
-            </span>
+              {providerItem.provider.type === "Google" ? (
+                <span style={{
+                  margin: "0 0 0 4px",
+                  lineHeight: "24px",
+                  fontSize: "16px",
+                }}
+                >
+                  {i18next.t("signup:Sign up with {type}").replace("{type}", providerItem.provider.type !== "" ? providerItem.provider.type : providerItem.provider.displayName)}
+                </span>
+              ) : null}
+            </Button>
           );
         });
       return (

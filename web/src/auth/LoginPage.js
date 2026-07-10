@@ -943,7 +943,7 @@ class LoginPage extends React.Component {
                   return;
                 }
                 return (
-                  <span key={id} onClick={(e) => {
+                  <Button style={{width: "100%"}} variant="outlined" key={id} onClick={(e) => {
                     const agreementChecked = this.form.current.getFieldValue("agreement");
 
                     if (agreementChecked !== undefined && typeof agreementChecked === "boolean" && !agreementChecked) {
@@ -952,9 +952,19 @@ class LoginPage extends React.Component {
                     }
                   }}>
                     {
-                      ProviderButton.renderProviderLogo(providerItem.provider, application, null, null, signinItem.rule, this.props.location)
+                      ProviderButton.renderProviderLogo(providerItem.provider, application, 24, null, signinItem.rule, this.props.location)
                     }
-                  </span>
+                    {providerItem.provider.type === "Google" ? (
+                      <span style={{
+                        margin: "0 0 0 4px",
+                        lineHeight: "24px",
+                        fontSize: "16px",
+                      }}
+                      >
+                        {i18next.t("signup:Sign up with {type}").replace("{type}", providerItem.provider.type !== "" ? providerItem.provider.type : providerItem.provider.displayName)}
+                      </span>
+                    ) : null}
+                  </Button>
                 );
               })
             }
