@@ -252,6 +252,9 @@ class SignupPage extends React.Component {
   }
 
   onUpdateApplication(application) {
+    if (application !== null) {
+      application.logo = Setting.getLogo(this.props.themeAlgorithm);
+    }
     this.props.onUpdateApplication(application);
   }
 
