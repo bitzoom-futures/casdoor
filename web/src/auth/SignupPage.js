@@ -41,6 +41,7 @@ import {withRouter} from "react-router-dom";
 import {CountryCodeSelect} from "../common/select/CountryCodeSelect";
 import * as PasswordChecker from "../common/PasswordChecker";
 import * as InvitationBackend from "../backend/InvitationBackend";
+import {CaretDownOutlined, CaretUpOutlined} from "@ant-design/icons";
 
 const formItemLayout = {
   labelCol: {
@@ -116,6 +117,14 @@ export const tailFormItemLayout = {
 class SignupPage extends React.Component {
   constructor(props) {
     super(props);
+    const urlReferralCode = new URLSearchParams(window.location.search).get("referralCode") ?? "";
+    // fall back to sessionStorage so a page refresh doesn't lose a manually-typed referral code
+    const storedReferralCode = sessionStorage.getItem("referralCode") ?? "";
+    // marks that the current code was typed by this user (vs. shared via a link by someone else)
+    const isOwnReferralCode = sessionStorage.getItem("referralCodeOwn") === "true" && storedReferralCode !== "";
+    const referralCode = urlReferralCode || storedReferralCode;
+    // a URL code is read-only only when it was NOT typed by this user; a self-typed code stays editable after refresh
+    const referralCodeReadOnly = urlReferralCode !== "" && !(isOwnReferralCode && storedReferralCode === urlReferralCode);
     this.state = {
       classes: props,
       applicationName:
@@ -131,9 +140,45 @@ class SignupPage extends React.Component {
       region: "",
       isTermsOfUseVisible: false,
       termsOfUseContent: "",
+      referralCode: referralCode,
+      // when the referralCode was shared via a link by someone else, the input is locked and cannot be edited
+      referralCodeReadOnly: referralCodeReadOnly,
+      // controls whether the referral code input is shown; toggled by clicking the label
+      referralCodeVisible: false,
     };
 
     this.form = React.createRef();
+  }
+
+  // store the typed referral code in sessionStorage instead of the URL, so a page refresh keeps the value
+  onReferralCodeChange(value) {
+    this.setState({referralCode: value});
+    if (value) {
+      sessionStorage.setItem("referralCode", value);
+      // remember this code was typed by the user, so it stays editable after a page refresh
+      sessionStorage.setItem("referralCodeOwn", "true");
+    } else {
+      sessionStorage.removeItem("referralCode");
+      sessionStorage.removeItem("referralCodeOwn");
+    }
+  }
+
+  // write the current referral code into the `referralCode` query parameter (called when clicking "Sign Up")
+  syncReferralCodeToUrl() {
+    const params = new URLSearchParams(window.location.search);
+    if (this.state.referralCode) {
+      params.set("referralCode", this.state.referralCode);
+    } else {
+      params.delete("referralCode");
+    }
+    const query = params.toString();
+    const newUrl = window.location.pathname + (query ? `?${query}` : "") + window.location.hash;
+    window.history.replaceState(null, "", newUrl);
+  }
+
+  // toggle the visibility of the referral code input
+  toggleReferralCodeVisible() {
+    this.setState((prevState) => ({referralCodeVisible: !prevState.referralCodeVisible}));
   }
 
   componentDidMount() {
@@ -924,28 +969,55 @@ class SignupPage extends React.Component {
       return <div dangerouslySetInnerHTML={{__html: signupItem.label}} />;
     } else if (signupItem.name === "Signup button") {
       return (
-        <Form.Item {...tailFormItemLayout}>
-          <Button type="primary" htmlType="submit" className="signup-button" style={{...Setting.getPrimaryButtonStyle(this.props.themeAlgorithm), width: "100%"}}>
-            {i18next.t("account:Sign Up")}
-          </Button>
-          <div style={{marginTop: "14px"}}>
-            {i18next.t("signup:Have account?")}
-            <a
-              className="signup-link"
-              onClick={() => {
-                const linkInStorage = sessionStorage.getItem("signinUrl");
-                if (linkInStorage !== null && linkInStorage !== "") {
-                  Setting.goToLinkSoft(this, linkInStorage);
-                } else {
-                  Setting.redirectToLoginPage(application, this.props.history);
-                }
-              }}
+        <>
+          <div style={{textAlign: "left", marginBottom: "4px"}}>
+            <Button
+              size="small"
+              color="default" variant="link"
+              onClick={() => this.toggleReferralCodeVisible()}
+              icon={this.state.referralCodeVisible ? <CaretUpOutlined /> : <CaretDownOutlined />}
+              iconPosition="end"
             >
-              {i18next.t("signup:sign in now")}
-            </a>
+              {i18next.t("application:Invitation code")}
+            </Button>
           </div>
+          <Form.Item
+            name="referralCode"
+            className="signup-referral-code"
+            hidden={!this.state.referralCodeVisible}
+            {...tailFormItemLayout}
+          >
+            <Input variant="filled"
+              className="signup-referral-code-input"
+              placeholder={i18next.t("application:Invitation code")}
+              disabled={this.state.referralCodeReadOnly}
+              onChange={(e) => this.onReferralCodeChange(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item {...tailFormItemLayout}>
+            <Button type="primary" htmlType="submit" className="signup-button" onClick={() => this.syncReferralCodeToUrl()} style={{...Setting.getPrimaryButtonStyle(this.props.themeAlgorithm), width: "100%"}}>
+              {i18next.t("account:Sign Up")}
+            </Button>
+            <div style={{marginTop: "14px"}}>
+              {i18next.t("signup:Have account?")}
+              <a
+                className="signup-link"
+                onClick={() => {
+                  const linkInStorage = sessionStorage.getItem("signinUrl");
+                  if (linkInStorage !== null && linkInStorage !== "") {
+                    Setting.goToLinkSoft(this, linkInStorage);
+                  } else {
+                    Setting.redirectToLoginPage(application, this.props.history);
+                  }
+                }}
+              >
+                {i18next.t("signup:sign in now")}
+              </a>
+            </div>
 
-        </Form.Item>
+          </Form.Item>
+        </>
+
       );
     } else if (signupItem.name === "Providers") {
       const showForm =
@@ -1084,6 +1156,7 @@ class SignupPage extends React.Component {
           application: application.name,
           organization: application.organization,
           countryCode: application.organizationObj.countryCodes?.[0],
+          referralCode: this.state.referralCode,
         }}
         size="large"
         layout={Setting.isMobile() ? "vertical" : "horizontal"}
