@@ -143,7 +143,7 @@ export function goToWeb3Url(application, provider, method) {
   }
 }
 
-export function renderProviderLogo(provider, application, width, margin, size, location) {
+export function renderProviderLogo(provider, application, width, margin, size, location, text, linkStyle) {
   if (size === "small") {
     if (provider.category === "OAuth") {
       if (provider.type === "WeChat" && provider.clientId2 !== "" && provider.clientSecret2 !== "" && provider.disableSsl === true && !navigator.userAgent.includes("MicroMessenger")) {
@@ -156,8 +156,9 @@ export function renderProviderLogo(provider, application, width, margin, size, l
         );
       } else {
         return (
-          <a key={provider.displayName} href={Provider.getAuthUrl(application, provider, "signup")}>
+          <a key={provider.displayName} href={Provider.getAuthUrl(application, provider, "signup")} style={linkStyle}>
             <img width={width} height={width} src={getProviderLogoURL(provider)} alt={provider.displayName} className="provider-img" style={{margin: margin}} />
+            <span style={{margin: text ? "0px 0px 0px 4px" : ""}}>{text}</span>
           </a>
         );
       }

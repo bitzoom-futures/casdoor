@@ -945,25 +945,14 @@ class LoginPage extends React.Component {
                 return (
                   <Button style={{width: "100%"}} variant="outlined" key={id} onClick={(e) => {
                     const agreementChecked = this.form.current.getFieldValue("agreement");
-
                     if (agreementChecked !== undefined && typeof agreementChecked === "boolean" && !agreementChecked) {
                       e.preventDefault();
                       message.error(i18next.t("signup:Please accept the agreement!"));
                     }
                   }}>
                     {
-                      ProviderButton.renderProviderLogo(providerItem.provider, application, 24, null, signinItem.rule, this.props.location)
+                      ProviderButton.renderProviderLogo(providerItem.provider, application, 24, null, signinItem.rule, this.props.location, i18next.t("signup:Sign up with {type}").replace("{type}", providerItem.provider.type !== "" ? providerItem.provider.type : providerItem.provider.displayName), {position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center"})
                     }
-                    {providerItem.provider.type === "Google" ? (
-                      <span style={{
-                        margin: "0 0 0 4px",
-                        lineHeight: "24px",
-                        fontSize: "16px",
-                      }}
-                      >
-                        {i18next.t("signup:Sign up with {type}").replace("{type}", providerItem.provider.type !== "" ? providerItem.provider.type : providerItem.provider.displayName)}
-                      </span>
-                    ) : null}
                   </Button>
                 );
               })
