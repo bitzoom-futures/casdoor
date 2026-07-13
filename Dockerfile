@@ -15,19 +15,25 @@ COPY . .
 RUN ./build.sh
 RUN go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt 2>&1 || true
 
-FROM alpine:latest AS STANDARD
+# Pin Alpine version for reproducible builds; latest can break mirrors mid-deploy.
+FROM alpine:3.20 AS STANDARD
 LABEL MAINTAINER="https://riverwa.com/"
 ARG USER=casdoor
 ARG TARGETOS
 ARG TARGETARCH
 ENV BUILDX_ARCH="${TARGETOS:-linux}_${TARGETARCH:-amd64}"
 
-RUN sed -i 's/https/http/' /etc/apk/repositories
-RUN apk add --update sudo
-RUN apk add tzdata
-RUN apk add curl
-RUN apk add lsof
-RUN apk add ca-certificates && update-ca-certificates
+# Single apk transaction + retries: multi-stage builds often hit flaky
+# "Socket not connected" when concurrent stages hammer Alpine mirrors.
+RUN set -eux; \
+    sed -i 's/https/http/' /etc/apk/repositories; \
+    for i in 1 2 3 4 5; do \
+      apk add --no-cache sudo tzdata curl lsof ca-certificates && break; \
+      echo "apk add failed (attempt $i), retrying in 5s..."; \
+      sleep 5; \
+      if [ "$i" -eq 5 ]; then exit 1; fi; \
+    done; \
+    update-ca-certificates
 
 RUN adduser -D $USER -u 1000 \
     && echo "$USER ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USER \
