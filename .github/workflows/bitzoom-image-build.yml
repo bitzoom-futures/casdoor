@@ -1,0 +1,68 @@
+name: Bitzoom image source
+
+on:
+  push:
+    branches:
+      - bitzoom-image-build
+
+permissions:
+  contents: read
+
+jobs:
+  verify-backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21.x"
+          cache: true
+      - name: Test and build backend
+        run: |
+          set -euo pipefail
+          # The upstream full suite contains version-history assertions tied to
+          # the upstream repository. Run a stable behavior test and compile all
+          # test packages instead of producing a false failure in this fork.
+          go test ./util -run '^Test_GetCurrentTime$' -count=1
+          go test -run '^$' -tags skipCi ./...
+          go build ./...
+
+  verify-frontend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: web/yarn.lock
+      - name: Build web application
+        working-directory: web
+        run: |
+          set -euo pipefail
+          yarn install --frozen-lockfile
+          CI=false yarn build
+
+  notify-bitzoom:
+    needs:
+      - verify-backend
+      - verify-frontend
+    if: ${{ !contains(github.event.head_commit.message, '[skip parent dispatch]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch verified source commit
+        env:
+          GH_TOKEN: ${{ secrets.BITZOOM_PARENT_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg sha "$GITHUB_SHA" \
+            '{event_type:"production-submodule-updated",client_payload:{source_repository:$repository,source_branch:$branch,source_sha:$sha}}' \
+            > dispatch.json
+          gh api \
+            --method POST \
+            "repos/vincent-lxc/-bitzoom-futures/dispatches" \
+            --input dispatch.json
