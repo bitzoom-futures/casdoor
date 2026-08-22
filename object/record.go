@@ -326,6 +326,28 @@ func filterRecordObject(object string, objectFields []string) string {
 	return util.StructToJson(filteredObject)
 }
 
+func deletedWebhookUserSnapshot(record *Record) (*User, error) {
+	if record == nil {
+		return nil, fmt.Errorf("delete-user webhook record is nil")
+	}
+	if record.Action != "delete-user" {
+		return nil, fmt.Errorf("webhook action %q is not delete-user", record.Action)
+	}
+
+	var user User
+	if err := json.Unmarshal([]byte(record.Object), &user); err != nil {
+		return nil, fmt.Errorf("decode delete-user webhook snapshot: %w", err)
+	}
+	if strings.TrimSpace(user.Id) == "" ||
+		user.Owner != record.Organization ||
+		user.Name != record.User ||
+		strings.TrimSpace(user.SignupApplication) == "" {
+		return nil, fmt.Errorf("delete-user webhook snapshot identity is invalid")
+	}
+
+	return &user, nil
+}
+
 func SendWebhooks(record *Record) error {
 	webhooks, err := getWebhooksByOrganization("")
 	if err != nil {
@@ -348,6 +370,13 @@ func SendWebhooks(record *Record) error {
 			if err != nil {
 				errs = append(errs, fmt.Errorf("webhook %s: failed to get user: %w", webhook.GetId(), err))
 				continue
+			}
+			if user == nil && record.Action == "delete-user" {
+				user, err = deletedWebhookUserSnapshot(record)
+				if err != nil {
+					errs = append(errs, fmt.Errorf("webhook %s: invalid deleted user snapshot: %w", webhook.GetId(), err))
+					continue
+				}
 			}
 
 			user, err = GetMaskedUser(user, false, err)

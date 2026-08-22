@@ -15,6 +15,7 @@
 package routers
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/beego/beego/v2/server/web/context"
@@ -36,6 +37,27 @@ func getUser(ctx *context.Context) (username string) {
 	}
 
 	return
+}
+
+func userMutationRecordIdentity(action string, rawObject string) (string, string, bool) {
+	switch action {
+	case "update-user", "delete-user":
+	default:
+		return "", "", false
+	}
+
+	var target struct {
+		Owner string `json:"owner"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(rawObject), &target); err != nil {
+		return "", "", false
+	}
+	if target.Owner == "" || target.Name == "" {
+		return "", "", false
+	}
+
+	return target.Owner, target.Name, true
 }
 
 func getUserByClientIdSecret(ctx *context.Context) string {
@@ -113,6 +135,10 @@ func AfterRecordMessage(ctx *context.Context) {
 		if err != nil {
 			panic(err)
 		}
+		record.Organization, record.User = owner, user
+	}
+
+	if owner, user, ok := userMutationRecordIdentity(record.Action, record.Object); ok {
 		record.Organization, record.User = owner, user
 	}
 

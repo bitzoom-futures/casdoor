@@ -25,12 +25,24 @@ import (
 
 func Test_GetCurrentTime(t *testing.T) {
 	test := GetCurrentTime()
-	expected := time.Now().Format(time.RFC3339)
-
-	assert.Equal(t, test, expected, "The times not are equals")
+	parsed, err := time.Parse(time.RFC3339Nano, test)
+	assert.NoError(t, err)
+	assert.WithinDuration(t, time.Now(), parsed, time.Second)
 
 	types := reflect.TypeOf(test).Kind()
 	assert.Equal(t, types, reflect.String, "GetCurrentUnixTime should be return string")
+}
+
+func Test_GetCurrentTime_IsHighResolution(t *testing.T) {
+	firstRaw := GetCurrentTime()
+	time.Sleep(time.Millisecond)
+	secondRaw := GetCurrentTime()
+
+	first, err := time.Parse(time.RFC3339Nano, firstRaw)
+	assert.NoError(t, err)
+	second, err := time.Parse(time.RFC3339Nano, secondRaw)
+	assert.NoError(t, err)
+	assert.True(t, second.After(first), "two lifecycle records must have a strict event order")
 }
 
 func Test_GetCurrentUnixTime_Shoud_Return_String(t *testing.T) {
