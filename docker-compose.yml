@@ -62,6 +62,8 @@ services:
       dbName: ${DB_NAME:-auth}
       authState: auth
       dataSourceName: ${DATA_SOURCE_NAME}
+      # 默认已被代码忽略：静态资源前缀跟随页面请求的域名。
+      # 仅当同时设置 staticBaseUrlMode=config 时下面的值才生效。
       staticBaseUrl: ${STATIC_BASE_URL:-https://auth1.riverwa.com}
       origin: ${ORIGIN:-https://auth.riverwa.com}
       initDataNewOnly: "true"

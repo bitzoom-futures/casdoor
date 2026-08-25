@@ -17,7 +17,7 @@ package routers
 import (
 	"compress/gzip"
 	"fmt"
-	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,11 +31,48 @@ import (
 )
 
 var (
-	oldStaticBaseUrl = "https://cdn.casbin.org"
-	newStaticBaseUrl = conf.GetConfigString("staticBaseUrl")
-	enableGzip       = conf.GetConfigBool("enableGzip")
-	frontendBaseDir  = conf.GetConfigString("frontendBaseDir")
+	oldStaticBaseUrl  = "https://cdn.casbin.org"
+	staticBaseUrlConf = conf.GetConfigString("staticBaseUrl")
+	staticBaseUrlMode = conf.GetConfigString("staticBaseUrlMode")
+	enableGzip        = conf.GetConfigBool("enableGzip")
+	frontendBaseDir   = conf.GetConfigString("frontendBaseDir")
 )
+
+// getStaticBaseUrl returns the prefix for the frontend's static assets. It
+// follows the domain of the current request so that assets are always
+// same-origin with the page, which makes deployment-injected staticBaseUrl
+// values (e.g. Dokploy's STATIC_BASE_URL) ineffective by design. Set
+// staticBaseUrlMode = "config" to fall back to the staticBaseUrl config.
+func getStaticBaseUrl(r *http.Request) string {
+	if staticBaseUrlMode == "config" && staticBaseUrlConf != "" {
+		return staticBaseUrlConf
+	}
+
+	// Only r.Host is used: the reverse proxy routes by Host, so it is trusted,
+	// while X-Forwarded-Host can be spoofed and would end up embedded in the
+	// response body.
+	return fmt.Sprintf("%s://%s", getRequestScheme(r), r.Host)
+}
+
+func getRequestScheme(r *http.Request) string {
+	// Traefik terminates TLS and forwards plain HTTP, so r.TLS is nil here.
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		if i := strings.Index(proto, ","); i != -1 {
+			proto = proto[:i]
+		}
+		return strings.TrimSpace(proto)
+	}
+	if r.TLS != nil {
+		return "https"
+	}
+
+	// Same heuristic as object.getOriginFromHostInternal()
+	hostname := removePort(r.Host)
+	if !strings.Contains(hostname, ".") || net.ParseIP(hostname) != nil {
+		return "http"
+	}
+	return "https"
+}
 
 func getWebBuildFolder() string {
 	path := "web/build"
@@ -165,11 +202,7 @@ func StaticFilter(ctx *context.Context) {
 		return
 	}
 
-	if oldStaticBaseUrl == newStaticBaseUrl {
-		makeGzipResponse(ctx.ResponseWriter, ctx.Request, path, organizationThemeCookie)
-	} else {
-		serveFileWithReplace(ctx.ResponseWriter, ctx.Request, path, organizationThemeCookie)
-	}
+	makeGzipResponse(ctx.ResponseWriter, ctx.Request, path, organizationThemeCookie)
 }
 
 func serveFileWithReplace(w http.ResponseWriter, r *http.Request, name string, organizationThemeCookie *OrganizationThemeCookie) {
@@ -191,28 +224,59 @@ func serveFileWithReplace(w http.ResponseWriter, r *http.Request, name string, o
 		newContent = strings.ReplaceAll(newContent, "<title>Casdoor</title>", fmt.Sprintf("<title>%s</title>", organizationThemeCookie.DisplayName))
 	}
 
-	newContent = strings.ReplaceAll(newContent, oldStaticBaseUrl, newStaticBaseUrl)
+	newContent = strings.ReplaceAll(newContent, oldStaticBaseUrl, getStaticBaseUrl(r))
 
 	http.ServeContent(w, r, d.Name(), d.ModTime(), strings.NewReader(newContent))
 }
 
 type gzipResponseWriter struct {
-	io.Writer
 	http.ResponseWriter
+	gz      *gzip.Writer
+	useGzip bool
 }
 
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+func (w *gzipResponseWriter) WriteHeader(code int) {
+	if code == http.StatusNotModified || code == http.StatusPartialContent {
+		// These carry no body of ours, so the gzip stream must never start:
+		// otherwise gz.Close() emits a header/footer that net/http rejects
+		// for such a status. 206 additionally cannot be gzipped at all, since
+		// its Content-Range addresses the uncompressed bytes.
+		w.useGzip = false
+		w.Header().Del("Content-Encoding")
+	} else {
+		// Defensive: http.ServeContent skips Content-Length while
+		// Content-Encoding is set, but any value that did survive would
+		// describe the uncompressed size and truncate the response.
+		w.Header().Del("Content-Length")
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !w.useGzip {
+		return w.ResponseWriter.Write(b)
+	}
+	return w.gz.Write(b)
 }
 
 func makeGzipResponse(w http.ResponseWriter, r *http.Request, path string, organizationThemeCookie *OrganizationThemeCookie) {
-	if !enableGzip || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+	// Range requests are served uncompressed: the byte offsets http.ServeContent
+	// computes address the raw content, not the gzip stream.
+	if !enableGzip || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || r.Header.Get("Range") != "" {
 		serveFileWithReplace(w, r, path, organizationThemeCookie)
 		return
 	}
+
 	w.Header().Set("Content-Encoding", "gzip")
 	gz := gzip.NewWriter(w)
-	defer gz.Close()
-	gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+	gzw := &gzipResponseWriter{ResponseWriter: w, gz: gz, useGzip: true}
+	// A gzip.Writer emits nothing until its first Write or Close, so skipping
+	// Close on the 304 path leaves the response body genuinely empty.
+	defer func() {
+		if gzw.useGzip {
+			gz.Close()
+		}
+	}()
+
 	serveFileWithReplace(gzw, r, path, organizationThemeCookie)
 }

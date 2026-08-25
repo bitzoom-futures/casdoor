@@ -226,6 +226,9 @@ MYSQL_ROOT_PASSWORD=<自定义>
 DATA_SOURCE_NAME=auth_user:bitZoom%402025_auth@tcp(mysql:3306)/
 ```
 
+> `STATIC_BASE_URL` 已非必填：静态资源前缀改为跟随页面请求的域名，该变量默认被代码忽略。
+> 仅在需要切回外部 CDN 时才有意义，届时还需同时设置 `staticBaseUrlMode=config`。
+
 ---
 
 ## 7. 运维机器人关键词索引
