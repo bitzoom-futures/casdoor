@@ -201,96 +201,59 @@ a[href^="mailto:"]:active {
   overflow-x: hidden !important;
 }
 
-/* Bold overrides for key UI elements */
-
-/* Sidebar menu: item labels */
-.ant-menu .ant-menu-item,
-.ant-menu .ant-menu-item a,
-.ant-menu .ant-menu-submenu-title {
-  font-weight: 600 !important;
+/* ui 调整LoginPage */
+.login-panel .ant-tabs-tab-btn {
+  font-size: 16px;
+  line-height: 24px;
 }
 
-/* Sidebar menu: group titles */
-.ant-menu .ant-menu-item-group-title {
-  font-weight: 700 !important;
-  letter-spacing: 0.04em;
+.login-panel .signin-methods .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #0006;
 }
 
-/* Table: column headers (thead) */
-.ant-table .ant-table-thead > tr > th,
-.ant-table .ant-table-thead > tr > td {
-  font-weight: 600 !important;
+.login-panel-dark .signin-methods .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #fff6;
 }
 
-/* Table: footer */
-.ant-table .ant-table-footer {
-  font-weight: 600 !important;
+.login-form .ant-form-item {
+  margin-bottom: 32px !important;
 }
 
-/* Table: title bar */
-.ant-table .ant-table-title {
-  font-weight: 700 !important;
+.signin-methods > .ant-tabs-nav {
+  margin-bottom: 32px !important;
 }
 
-/* Card: header title */
-.ant-card .ant-card-head-title {
-  font-weight: 600 !important;
+.signin-methods > .ant-tabs-tab {
+  padding-bottom: 18px;
 }
 
-/* Descriptions: item labels */
-.ant-descriptions .ant-descriptions-item-label {
-  font-weight: 600 !important;
+.verification-code-input .ant-input-filled[disabled],
+.verification-code-input .ant-input-affix-wrapper-filled.ant-input-affix-wrapper-disabled {
+  border-color: transparent !important;
 }
 
-/* Tabs: tab button labels */
-.ant-tabs .ant-tabs-tab .ant-tabs-tab-btn {
-  font-weight: 600 !important;
+/* .login-panel .ant-input-filled,
+.login-panel .ant-input-affix-wrapper-filled {
+  background-color: #0000000A !important;
+} */
+
+.login-panel-dark .ant-input-filled,
+.login-panel-dark .ant-input-affix-wrapper-filled {
+  background-color: #ffffff0a !important;
 }
 
-/* Layout sider: menu item and submenu labels */
-.ant-layout-sider .ant-menu-item,
-.ant-layout-sider .ant-menu-submenu-title {
-  font-weight: 600 !important;
+.login-panel .ant-input::placeholder {
+  color: #0003;
 }
 
-/* Table loading spinner - give the overlay enough height so spinner appears centered (antd v6) */
-.ant-table-wrapper .ant-spin.ant-spin-spinning {
-  min-height: 420px;
+.login-panel-dark .ant-input::placeholder {
+  color: #fff3;
 }
 
-/* Sidebar menu: selected item - darker background */
-.ant-layout-sider .ant-menu-light .ant-menu-item-selected,
-.ant-layout-sider .ant-menu-light > .ant-menu .ant-menu-item-selected {
-  background-color: rgb(0 0 0 / 15%) !important;
+.forget-content .ant-input::placeholder {
+  color: #0003;
 }
 
-/* Sidebar menu container: hide scrollbar but keep scroll behavior */
-.sider-menu-container {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-.sider-menu-container::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/WebKit */
-}
-
-/* Message popups: static API renders outside ConfigProvider, override font explicitly */
-.ant-message,
-.ant-message .ant-message-notice-content,
-.ant-message .ant-message-custom-content,
-.ant-message .ant-message-custom-content span {
-  font-family:
-    "Inter Variable",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    sans-serif !important;
-}
-
-/* Table cells never wrap (scroll.x handles overflow), so shrinking only absorbs column padding */
-.ant-table-tbody > tr > td,
-.ant-table-thead > tr > th {
-  white-space: nowrap;
+.forget-content-dark .ant-input::placeholder {
+  color: #fff3;
 }

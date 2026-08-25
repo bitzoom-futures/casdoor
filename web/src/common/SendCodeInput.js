@@ -12,23 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Button, Input, Space} from "antd";
+import { Button, Input, Space } from "antd";
 import React from "react";
 import i18next from "i18next";
 import * as UserBackend from "../backend/UserBackend";
 import * as AuthBackend from "../auth/AuthBackend";
 import * as Setting from "../Setting";
-import {SafetyOutlined} from "@ant-design/icons";
-import {CaptchaModal} from "./modal/CaptchaModal";
+// import { SafetyOutlined } from "@ant-design/icons";
+import { CaptchaModal } from "./modal/CaptchaModal";
 
-export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, textBefore, onChange, onButtonClickArgs, application, method, countryCode, refreshCaptcha}) => {
+export const SendCodeInput = ({
+  value,
+  disabled,
+  captchaValue,
+  useInlineCaptcha,
+  textBefore,
+  onChange,
+  onButtonClickArgs,
+  application,
+  method,
+  countryCode,
+  refreshCaptcha,
+}) => {
   const [visible, setVisible] = React.useState(false);
   const [buttonLeftTime, setButtonLeftTime] = React.useState(0);
   const [buttonLoading, setButtonLoading] = React.useState(false);
 
   const getCodeResendTimeout = () => {
     // Use application's codeResendTimeout if available, otherwise default to 60 seconds
-    return (application && application.codeResendTimeout > 0) ? application.codeResendTimeout : 60;
+    return application && application.codeResendTimeout > 0
+      ? application.codeResendTimeout
+      : 60;
   };
 
   const handleCountDown = (leftTime = getCodeResendTimeout()) => {
@@ -48,21 +62,30 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
   const handleOk = (captchaType, captchaToken, clintSecret) => {
     setVisible(false);
     setButtonLoading(true);
-    UserBackend.sendCode(captchaType, captchaToken, clintSecret, method, countryCode, ...onButtonClickArgs).then(res => {
-      setButtonLoading(false);
-      if (res) {
-        handleCountDown(getCodeResendTimeout());
-      } else {
+    UserBackend.sendCode(
+      captchaType,
+      captchaToken,
+      clintSecret,
+      method,
+      countryCode,
+      ...onButtonClickArgs,
+    )
+      .then((res) => {
+        setButtonLoading(false);
+        if (res) {
+          handleCountDown(getCodeResendTimeout());
+        } else {
+          if (useInlineCaptcha) {
+            refreshCaptcha?.();
+          }
+        }
+      })
+      .catch(() => {
+        setButtonLoading(false);
         if (useInlineCaptcha) {
           refreshCaptcha?.();
         }
-      }
-    }).catch(() => {
-      setButtonLoading(false);
-      if (useInlineCaptcha) {
-        refreshCaptcha?.();
-      }
-    });
+      });
   };
 
   const handleCancel = () => {
@@ -82,11 +105,18 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
 
       // client secret is validated in backend
       if (!captchaValue?.captchaType || !captchaValue?.captchaToken) {
-        Setting.showMessage("error", i18next.t("general:Please complete the captcha correctly"));
+        Setting.showMessage(
+          "error",
+          i18next.t("general:Please complete the captcha correctly"),
+        );
         return;
       }
 
-      handleOk(captchaValue.captchaType, captchaValue.captchaToken, captchaValue.clientSecret);
+      handleOk(
+        captchaValue.captchaType,
+        captchaValue.captchaToken,
+        captchaValue.clientSecret,
+      );
     };
 
     const checkCaptchaStatusAndSend = () => {
@@ -121,7 +151,10 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
       return;
     }
 
-    if (captchaRule === Setting.CaptchaRule.Dynamic || captchaRule === Setting.CaptchaRule.InternetOnly) {
+    if (
+      captchaRule === Setting.CaptchaRule.Dynamic ||
+      captchaRule === Setting.CaptchaRule.InternetOnly
+    ) {
       checkCaptchaStatusAndSend();
       return;
     }
@@ -131,33 +164,41 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
 
   return (
     <React.Fragment>
-      <Space.Compact style={{width: "100%"}}>
-        <Input
-          addonBefore={textBefore}
-          disabled={disabled}
-          value={value}
-          prefix={<SafetyOutlined />}
-          placeholder={i18next.t("code:Enter your code")}
-          className="verification-code-input"
-          onChange={e => onChange(e.target.value)}
-          autoComplete="one-time-code"
+      <Search
+        addonBefore={textBefore}
+        disabled={disabled}
+        value={value}
+        placeholder={i18next.t("code:Enter your code")}
+        className="verification-code-input"
+        onChange={(e) => onChange(e.target.value)}
+        variant="filled"
+        enterButton={
+          <Button
+            style={{ fontSize: 14 }}
+            type={"text"}
+            disabled={disabled || buttonLeftTime > 0}
+            loading={buttonLoading}
+          >
+            {buttonLeftTime > 0
+              ? `${buttonLeftTime} s`
+              : buttonLoading
+                ? i18next.t("code:Sending")
+                : i18next.t("code:Send Code")}
+          </Button>
+        }
+        onSearch={handleSearch}
+        autoComplete="one-time-code"
+      />
+      {useInlineCaptcha ? null : (
+        <CaptchaModal
+          owner={application.owner}
+          name={application.name}
+          visible={visible}
+          onOk={handleOk}
+          onCancel={handleCancel}
+          isCurrentProvider={false}
         />
-        <Button style={{fontSize: 14}} type={"primary"} disabled={disabled || buttonLeftTime > 0} loading={buttonLoading} onClick={handleSearch}>
-          {buttonLeftTime > 0 ? `${buttonLeftTime} s` : buttonLoading ? i18next.t("code:Getting") : i18next.t("code:Get Code")}
-        </Button>
-      </Space.Compact>
-      {
-        useInlineCaptcha ? null : (
-          <CaptchaModal
-            owner={application.owner}
-            name={application.name}
-            visible={visible}
-            onOk={handleOk}
-            onCancel={handleCancel}
-            isCurrentProvider={false}
-          />
-        )
-      }
+      )}
     </React.Fragment>
   );
 };

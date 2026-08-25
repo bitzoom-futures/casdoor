@@ -27,8 +27,9 @@ export let StaticBaseUrl = "https://cdn.casbin.org";
 export const InitThemeAlgorithm = true;
 export const ThemeDefault = {
   themeType: "default",
-  colorPrimary: "#262626",
-  borderRadius: 10,
+  // colorPrimary: "#5734d3",
+  colorPrimary: "#8B5CF6",
+  borderRadius: 6,
   isCompact: false,
 };
 
