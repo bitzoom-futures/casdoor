@@ -14,7 +14,7 @@ name: futures_auth
 #   ENV=prod
 #   DOMAIN=auth.riverwa.com
 #   ORIGIN=https://auth.riverwa.com
-#   STATIC_BASE_URL=https://www.riverwa.com
+#   STATIC_BASE_URL=https://auth1.riverwa.com
 #   DB_NAME=auth
 #   DB_USER=auth_user
 #   DB_PASSWORD=bitZoom2025_auth
@@ -62,7 +62,7 @@ services:
       dbName: ${DB_NAME:-auth}
       authState: auth
       dataSourceName: ${DATA_SOURCE_NAME}
-      staticBaseUrl: ${STATIC_BASE_URL:-https://www.riverwa.com}
+      staticBaseUrl: ${STATIC_BASE_URL:-https://auth1.riverwa.com}
       origin: ${ORIGIN:-https://auth.riverwa.com}
       initDataNewOnly: "true"
       logConfig: '{"adapter":"file", "filename": "logs/casdoor.log", "maxdays":10, "perm":"0770"}'
