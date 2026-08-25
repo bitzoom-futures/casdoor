@@ -5,7 +5,7 @@ module.exports = {
   devServer: {
     proxy: {
       "/api": {
-        target: "http://119.8.50.236:8000",
+        target: "http://auth1.riverwa.com",
         changeOrigin: true,
       },
       "/swagger": {
@@ -56,7 +56,10 @@ module.exports = {
       options: {
         lessLoaderOptions: {
           lessOptions: {
-            modifyVars: {"@primary-color": "rgb(89,54,213)", "@border-radius-base": "5px"},
+            modifyVars: {
+              "@primary-color": "rgb(89,54,213)",
+              "@border-radius-base": "5px",
+            },
             javascriptEnabled: true,
           },
         },
