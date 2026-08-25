@@ -15,14 +15,19 @@
 package routers
 
 import (
+	stdcontext "context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	"github.com/beego/beego/context"
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/casdoor/casdoor/conf"
 	"github.com/casdoor/casdoor/i18n"
+	"github.com/casdoor/casdoor/mcpself"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
 )
@@ -34,8 +39,18 @@ type Response struct {
 	Data2  interface{} `json:"data2"`
 }
 
+func isMcpRequest(urlPath string) bool {
+	// "/api/mcp" is Casdoor's own MCP server, "/api/server/:owner/:name" is the MCP server proxy
+	return urlPath == "/api/mcp" || strings.HasPrefix(urlPath, "/api/server/")
+}
+
 func responseError(ctx *context.Context, error string, data ...interface{}) {
 	// ctx.ResponseWriter.WriteHeader(http.StatusForbidden)
+	urlPath := ctx.Request.URL.Path
+	if isMcpRequest(urlPath) {
+		denyMcpRequest(ctx, error)
+		return
+	}
 
 	resp := Response{Status: "error", Msg: error}
 	switch len(data) {
@@ -65,9 +80,47 @@ func denyRequest(ctx *context.Context) {
 	responseError(ctx, T(ctx, "auth:Unauthorized operation"))
 }
 
+func denyMcpRequest(ctx *context.Context, message string) {
+	// Add WWW-Authenticate header per MCP Authorization spec (RFC 9728), so that the MCP
+	// client knows it should start the OAuth flow instead of treating the error as fatal
+	// Use the same logic as getOriginFromHost to determine the scheme
+	host := ctx.Request.Host
+	scheme := "https"
+	if !strings.Contains(host, ".") {
+		// localhost:8000 or computer-name:80
+		scheme = "http"
+	}
+	resourceMetadataUrl := fmt.Sprintf("%s://%s/.well-known/oauth-protected-resource", scheme, host)
+	ctx.Output.Header("WWW-Authenticate", fmt.Sprintf("Bearer realm=\"casdoor\", resource_metadata=\"%s\"", resourceMetadataUrl))
+
+	req := mcpself.McpRequest{}
+	err := json.Unmarshal(ctx.Input.RequestBody, &req)
+	if err != nil {
+		// the request body is not a JSON-RPC request, e.g., the GET request of the MCP proxy
+		ctx.Output.SetStatus(http.StatusUnauthorized)
+		ctx.Output.Body([]byte{})
+		return
+	}
+
+	if req.ID == nil {
+		ctx.Output.SetStatus(http.StatusAccepted)
+		ctx.Output.Body([]byte{})
+		return
+	}
+
+	resp := mcpself.BuildMcpResponse(req.ID, nil, &mcpself.McpError{
+		Code:    -32001,
+		Message: "Unauthorized",
+		Data:    message,
+	})
+
+	ctx.Output.SetStatus(http.StatusUnauthorized)
+	_ = ctx.Output.JSON(resp, true, false)
+}
+
 func getUsernameByClientIdSecret(ctx *context.Context) (string, error) {
-	clientId, clientSecret, ok := ctx.Request.BasicAuth()
-	if !ok {
+	clientId, clientSecret, fromBasicAuth := ctx.Request.BasicAuth()
+	if !fromBasicAuth {
 		clientId = ctx.Input.Query("clientId")
 		clientSecret = ctx.Input.Query("clientSecret")
 	}
@@ -81,36 +134,78 @@ func getUsernameByClientIdSecret(ctx *context.Context) (string, error) {
 		return "", err
 	}
 	if application == nil {
+		if fromBasicAuth {
+			// The Basic Auth credentials may come from a reverse proxy protecting Casdoor with
+			// HTTP Basic Auth. In that case, the username is not an OAuth client ID, so we
+			// silently ignore it instead of returning an error that would break the whole system.
+			return "", nil
+		}
 		return "", fmt.Errorf("Application not found for client ID: %s", clientId)
 	}
 
 	if application.ClientSecret != clientSecret {
+		if fromBasicAuth {
+			// Same as above: the secret mismatch may be due to proxy-level Basic Auth credentials.
+			return "", nil
+		}
 		return "", fmt.Errorf("Incorrect client secret for application: %s", application.Name)
 	}
 
+	for _, tag := range application.Tags {
+		if tag == "dcr" {
+			return fmt.Sprintf("app-dcr/%s", application.Name), nil
+		}
+	}
 	return fmt.Sprintf("app/%s", application.Name), nil
 }
 
-func getUsernameByKeys(ctx *context.Context) (string, error) {
-	accessKey, accessSecret := getKeys(ctx)
-	user, err := object.GetUserByAccessKey(accessKey)
+func getUsernameByAccessKey(ctx *context.Context) (string, error) {
+	accessKey := ctx.Input.Query("accessKey")
+	accessSecret := ctx.Input.Query("accessSecret")
+
+	if accessKey == "" || accessSecret == "" {
+		return "", nil
+	}
+
+	key, err := object.GetKeyByAccessKey(accessKey)
 	if err != nil {
 		return "", err
 	}
-
-	if user == nil {
-		return "", fmt.Errorf("user not found for access key: %s", accessKey)
+	if key == nil {
+		return "", fmt.Errorf("Access key not found: %s", accessKey)
 	}
 
-	if accessSecret != user.AccessSecret {
-		return "", fmt.Errorf("incorrect access secret for user: %s", user.Name)
+	if key.AccessSecret != accessSecret {
+		return "", fmt.Errorf("Incorrect access secret for key: %s", key.Name)
 	}
 
-	return user.GetId(), nil
+	if key.State != "Active" {
+		return "", fmt.Errorf("Access key is not active: %s", key.Name)
+	}
+
+	if key.ExpireTime != "" {
+		expireTime, err := time.Parse(time.RFC3339, key.ExpireTime)
+		if err != nil {
+			return "", fmt.Errorf("Invalid expire time format for key: %s", key.Name)
+		}
+		if time.Now().After(expireTime) {
+			return "", fmt.Errorf("Access key has expired, expireTime = %s", key.ExpireTime)
+		}
+	}
+
+	if key.User != "" {
+		return util.GetId(key.Organization, key.User), nil
+	}
+
+	if key.Application != "" {
+		return fmt.Sprintf("app/%s", key.Application), nil
+	}
+
+	return "", nil
 }
 
 func getSessionUser(ctx *context.Context) string {
-	user := ctx.Input.CruSession.Get("username")
+	user := ctx.Input.CruSession.Get(stdcontext.Background(), "username")
 	if user == nil {
 		return ""
 	}
@@ -119,34 +214,34 @@ func getSessionUser(ctx *context.Context) string {
 }
 
 func setSessionUser(ctx *context.Context, user string) {
-	err := ctx.Input.CruSession.Set("username", user)
+	err := ctx.Input.CruSession.Set(stdcontext.Background(), "username", user)
 	if err != nil {
 		panic(err)
 	}
 
 	// https://github.com/beego/beego/issues/3445#issuecomment-455411915
-	ctx.Input.CruSession.SessionRelease(ctx.ResponseWriter)
+	ctx.Input.CruSession.SessionRelease(stdcontext.Background(), ctx.ResponseWriter)
 }
 
 func setSessionExpire(ctx *context.Context, ExpireTime int64) {
 	SessionData := struct{ ExpireTime int64 }{ExpireTime: ExpireTime}
-	err := ctx.Input.CruSession.Set("SessionData", util.StructToJson(SessionData))
+	err := ctx.Input.CruSession.Set(stdcontext.Background(), "SessionData", util.StructToJson(SessionData))
 	if err != nil {
 		panic(err)
 	}
-	ctx.Input.CruSession.SessionRelease(ctx.ResponseWriter)
+	ctx.Input.CruSession.SessionRelease(stdcontext.Background(), ctx.ResponseWriter)
 }
 
 func setSessionOidc(ctx *context.Context, scope string, aud string) {
-	err := ctx.Input.CruSession.Set("scope", scope)
+	err := ctx.Input.CruSession.Set(stdcontext.Background(), "scope", scope)
 	if err != nil {
 		panic(err)
 	}
-	err = ctx.Input.CruSession.Set("aud", aud)
+	err = ctx.Input.CruSession.Set(stdcontext.Background(), "aud", aud)
 	if err != nil {
 		panic(err)
 	}
-	ctx.Input.CruSession.SessionRelease(ctx.ResponseWriter)
+	ctx.Input.CruSession.SessionRelease(stdcontext.Background(), ctx.ResponseWriter)
 }
 
 func parseBearerToken(ctx *context.Context) string {
@@ -156,8 +251,9 @@ func parseBearerToken(ctx *context.Context) string {
 		return ""
 	}
 
+	// Accept both "Bearer" (RFC 6750) and "DPoP" (RFC 9449) authorization schemes.
 	prefix := tokens[0]
-	if prefix != "Bearer" {
+	if prefix != "Bearer" && prefix != "DPoP" {
 		return ""
 	}
 

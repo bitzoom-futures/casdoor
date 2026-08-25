@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, Row, Select, Switch} from "antd";
 import {LinkOutlined} from "@ant-design/icons";
 import * as WebhookBackend from "./backend/WebhookBackend";
@@ -119,7 +120,15 @@ class WebhookEditPage extends React.Component {
   }
 
   getWebhook() {
-    WebhookBackend.getWebhook("admin", this.state.webhookName)
+    if (this.state.mode === "add" && this.props.location.webhook) {
+      const webhook = this.props.location.webhook;
+      this.setState({
+        webhook: webhook,
+      });
+      return;
+    }
+
+    WebhookBackend.getWebhook("admin", this.state.webhookName, this.props.account.owner)
       .then((res) => {
         if (res.data === null) {
           this.props.history.push("/404");
@@ -220,7 +229,7 @@ class WebhookEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("general:Method"), i18next.t("webhook:Method - Tooltip"))} :
+            {Setting.getLabel(i18next.t("general:Method"), i18next.t("provider:Method - Tooltip"))} :
           </Col>
           <Col span={22} >
             <Select virtual={false} style={{width: "100%"}} value={this.state.webhook.method} onChange={(value => {this.updateWebhookField("method", value);})}>
@@ -273,13 +282,11 @@ class WebhookEditPage extends React.Component {
                 this.updateWebhookField("events", value);
               }} >
               {
-                (
-                  ["signup", "login", "logout", "new-user"].concat(Setting.getApiPaths()).map((option, index) => {
-                    return (
-                      <Option key={option} value={option}>{option}</Option>
-                    );
-                  })
-                )
+                Setting.getApiPaths().map((option, index) => {
+                  return (
+                    <Option key={option} value={option}>{option}</Option>
+                  );
+                })
               }
             </Select>
           </Col>
@@ -334,7 +341,8 @@ class WebhookEditPage extends React.Component {
             {Setting.getLabel(i18next.t("webhook:Single org only"), i18next.t("webhook:Single org only - Tooltip"))} :
           </Col>
           <Col span={1} >
-            <Switch checked={this.state.webhook.singleOrgOnly} onChange={checked => {
+            {/* turning this off makes the webhook receive the records of every organization, which is reserved for global admins */}
+            <Switch disabled={!Setting.isAdminUser(this.props.account)} checked={this.state.webhook.singleOrgOnly} onChange={checked => {
               this.updateWebhookField("singleOrgOnly", checked);
             }} />
           </Col>
@@ -355,12 +363,17 @@ class WebhookEditPage extends React.Component {
 
   submitWebhookEdit(exitAfterSave) {
     const webhook = Setting.deepCopy(this.state.webhook);
-    WebhookBackend.updateWebhook(this.state.webhook.owner, this.state.webhookName, webhook)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? WebhookBackend.addWebhook(webhook)
+      : WebhookBackend.updateWebhook(this.state.webhook.owner, this.state.webhookName, webhook);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
             webhookName: this.state.webhook.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -370,7 +383,9 @@ class WebhookEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateWebhookField("name", this.state.webhookName);
+          if (!isAdd) {
+            this.updateWebhookField("name", this.state.webhookName);
+          }
         }
       })
       .catch(error => {
@@ -379,26 +394,16 @@ class WebhookEditPage extends React.Component {
   }
 
   deleteWebhook() {
-    WebhookBackend.deleteWebhook(this.state.webhook)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/webhooks");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/webhooks");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.webhook !== null ? this.renderWebhook() : null
+          this.state.webhook !== null ? this.renderWebhook() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitWebhookEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitWebhookEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteWebhook()}>{i18next.t("general:Cancel")}</Button> : null}

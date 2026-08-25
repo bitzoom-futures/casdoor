@@ -37,18 +37,7 @@ class AdapterListPage extends BaseListPage {
 
   addAdapter() {
     const newAdapter = this.newAdapter();
-    AdapterBackend.addAdapter(newAdapter)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/adapters/${newAdapter.owner}/${newAdapter.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/adapters/${newAdapter.owner}/${newAdapter.name}`, mode: "add", adapter: newAdapter});
   }
 
   deleteAdapter(i) {
@@ -125,16 +114,16 @@ class AdapterListPage extends BaseListPage {
         title: i18next.t("adapter:Use same DB"),
         dataIndex: "useSameDb",
         key: "useSameDb",
-        width: "120px",
+        width: "130px",
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "type",
         key: "type",
         width: "100px",
@@ -148,11 +137,11 @@ class AdapterListPage extends BaseListPage {
         title: i18next.t("syncer:Database type"),
         dataIndex: "databaseType",
         key: "databaseType",
-        width: "120px",
+        width: "140px",
         sorter: (a, b) => a.databaseType.localeCompare(b.databaseType),
       },
       {
-        title: i18next.t("provider:Host"),
+        title: i18next.t("general:Host"),
         dataIndex: "host",
         key: "host",
         width: "120px",
@@ -160,7 +149,7 @@ class AdapterListPage extends BaseListPage {
         ...this.getColumnSearchProps("host"),
       },
       {
-        title: i18next.t("provider:Port"),
+        title: i18next.t("general:Port"),
         dataIndex: "port",
         key: "port",
         width: "100px",
@@ -227,14 +216,14 @@ class AdapterListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={adapters} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={adapters} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Adapters")}&nbsp;&nbsp;&nbsp;&nbsp;
               <Button type="primary" size="small" onClick={this.addAdapter.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

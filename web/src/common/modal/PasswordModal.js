@@ -129,6 +129,18 @@ export const PasswordModal = (props) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("user:Password set successfully"));
           setVisible(false);
+          if (account.owner === user.owner && account.name === userName) {
+            const wasForced = account.needUpdatePassword;
+            account.needUpdatePassword = false;
+            props.onPasswordUpdated?.();
+
+            // continue the login that was interrupted by "Need update password"
+            const signinUrl = sessionStorage.getItem("signinUrl");
+            if (wasForced && signinUrl) {
+              sessionStorage.removeItem("signinUrl");
+              Setting.goToLink(signinUrl);
+            }
+          }
         } else {
           Setting.showMessage("error", i18next.t(`user:${res.msg}`));
         }
@@ -142,7 +154,7 @@ export const PasswordModal = (props) => {
 
   return (
     <Row>
-      <Button type="default" disabled={props.disabled} onClick={showModal}>
+      <Button type="primary" disabled={props.disabled} onClick={showModal}>
         {hasOldPassword ? i18next.t("user:Modify password...") : i18next.t("user:Set password...")}
       </Button>
       <Modal
@@ -178,7 +190,7 @@ export const PasswordModal = (props) => {
                   setPasswordPopover(PasswordChecker.renderPasswordPopover(passwordOptions, newPassword));
                 }}
                 onBlur={() => {
-                  setPasswordPopoverOpen(false);
+                  setPasswordPopoverOpen(Setting.getPasswordPopoverOpen(newPassword, passwordOptions));
                 }}
                 status={(!newPasswordValid && newPasswordErrorMessage) ? "error" : undefined}
               />

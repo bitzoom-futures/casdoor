@@ -20,9 +20,7 @@ import (
 )
 
 func GetCurrentTime() string {
-	timestamp := time.Now().Unix()
-	tm := time.Unix(timestamp, 0)
-	return tm.Format(time.RFC3339)
+	return time.Now().Format(time.RFC3339Nano)
 }
 
 func GetCurrentTimeEx(timestamp string) string {

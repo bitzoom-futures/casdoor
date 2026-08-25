@@ -49,18 +49,7 @@ class InvitationListPage extends BaseListPage {
 
   addInvitation() {
     const newInvitation = this.newInvitation();
-    InvitationBackend.addInvitation(newInvitation)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/invitations/${newInvitation.owner}/${newInvitation.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/invitations/${newInvitation.owner}/${newInvitation.name}`, mode: "add", invitation: newInvitation});
   }
 
   deleteInvitation(i) {
@@ -164,7 +153,7 @@ class InvitationListPage extends BaseListPage {
         title: i18next.t("invitation:Used count"),
         dataIndex: "usedCount",
         key: "usedCount",
-        width: "130px",
+        width: "140px",
         sorter: true,
         ...this.getColumnSearchProps("usedCount"),
       },
@@ -254,14 +243,14 @@ class InvitationListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={invitations} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={invitations} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Invitations")}&nbsp;&nbsp;&nbsp;&nbsp;
               <Button type="primary" size="small" onClick={this.addInvitation.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

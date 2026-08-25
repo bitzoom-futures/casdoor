@@ -41,6 +41,7 @@ export function updateProduct(owner, name, product) {
     credentials: "include",
     body: JSON.stringify(newProduct),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -53,6 +54,7 @@ export function addProduct(product) {
     credentials: "include",
     body: JSON.stringify(newProduct),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -65,16 +67,7 @@ export function deleteProduct(product) {
     credentials: "include",
     body: JSON.stringify(newProduct),
     headers: {
-      "Accept-Language": Setting.getAcceptLanguage(),
-    },
-  }).then(res => res.json());
-}
-
-export function buyProduct(owner, name, providerName, pricingName = "", planName = "", userName = "", paymentEnv = "", customPrice = 0) {
-  return fetch(`${Setting.ServerUrl}/api/buy-product?id=${owner}/${encodeURIComponent(name)}&providerName=${providerName}&pricingName=${pricingName}&planName=${planName}&userName=${userName}&paymentEnv=${paymentEnv}&customPrice=${customPrice}`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());

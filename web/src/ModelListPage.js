@@ -54,18 +54,7 @@ class ModelListPage extends BaseListPage {
 
   addModel() {
     const newModel = this.newModel();
-    ModelBackend.addModel(newModel)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/models/${newModel.owner}/${newModel.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/models/${newModel.owner}/${newModel.name}`, mode: "add", model: newModel});
   }
 
   deleteModel(i) {
@@ -191,7 +180,7 @@ class ModelListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={models} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered
+        <Table scroll={{x: true}} columns={columns} dataSource={models} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered
           pagination={paginationProps}
           title={() => (
             <div>
@@ -200,7 +189,7 @@ class ModelListPage extends BaseListPage {
                 onClick={this.addModel.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

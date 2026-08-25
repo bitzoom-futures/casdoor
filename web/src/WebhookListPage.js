@@ -42,18 +42,7 @@ class WebhookListPage extends BaseListPage {
 
   addWebhook() {
     const newWebhook = this.newWebhook();
-    WebhookBackend.addWebhook(newWebhook)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/webhooks/${newWebhook.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/webhooks/${newWebhook.name}`, mode: "add", webhook: newWebhook});
   }
 
   deleteWebhook(i) {
@@ -148,7 +137,7 @@ class WebhookListPage extends BaseListPage {
         title: i18next.t("webhook:Content type"),
         dataIndex: "contentType",
         key: "contentType",
-        width: "140px",
+        width: "150px",
         sorter: true,
         filterMultiple: false,
         filters: [
@@ -171,11 +160,11 @@ class WebhookListPage extends BaseListPage {
         title: i18next.t("webhook:Is user extended"),
         dataIndex: "isUserExtended",
         key: "isUserExtended",
-        width: "140px",
+        width: "150px",
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -187,7 +176,7 @@ class WebhookListPage extends BaseListPage {
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -200,7 +189,7 @@ class WebhookListPage extends BaseListPage {
         fixed: (Setting.isMobile()) ? "false" : "right",
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -234,14 +223,14 @@ class WebhookListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={webhooks} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={webhooks} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Webhooks")}&nbsp;&nbsp;&nbsp;&nbsp;
               <Button type="primary" size="small" onClick={this.addWebhook.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

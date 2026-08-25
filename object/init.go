@@ -47,12 +47,14 @@ func InitDb() {
 	initWebAuthn()
 }
 
-func getBuiltInAccountItems() []*AccountItem {
+func GetDefaultAccountItems() []*AccountItem {
 	return []*AccountItem{
 		{Name: "Organization", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "ID", Visible: true, ViewRule: "Public", ModifyRule: "Immutable"},
 		{Name: "Name", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Display name", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "First name", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Last name", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Avatar", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "User type", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Password", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
@@ -61,26 +63,53 @@ func getBuiltInAccountItems() []*AccountItem {
 		{Name: "Country code", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Country/Region", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Location", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Address", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Addresses", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Affiliation", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Title", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "ID card type", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "ID card", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "ID card info", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Real name", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "ID verification", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
 		{Name: "Homepage", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Bio", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Tag", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
+		{Name: "Language", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Gender", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Birthday", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Education", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Balance", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Balance credit", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Balance currency", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Cart", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Transactions", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "UID number", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
+		{Name: "Score", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Karma", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
+		{Name: "Ranking", Visible: true, ViewRule: "Public", ModifyRule: "Self"},
 		{Name: "Signup application", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Register type", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Register source", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
 		{Name: "Roles", Visible: true, ViewRule: "Public", ModifyRule: "Immutable"},
 		{Name: "Permissions", Visible: true, ViewRule: "Public", ModifyRule: "Immutable"},
 		{Name: "Groups", Visible: true, ViewRule: "Public", ModifyRule: "Admin"},
+		{Name: "Consents", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
 		{Name: "3rd-party logins", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
 		{Name: "Properties", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
+		{Name: "Is online", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 		{Name: "Is admin", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 		{Name: "Is forbidden", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 		{Name: "Is deleted", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 		{Name: "Multi-factor authentication", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "MFA items", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
 		{Name: "WebAuthn credentials", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Last change password time", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 		{Name: "Managed accounts", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Face ID", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
 		{Name: "MFA accounts", Visible: true, ViewRule: "Self", ModifyRule: "Self"},
+		{Name: "Need update password", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
+		{Name: "IP whitelist", Visible: true, ViewRule: "Admin", ModifyRule: "Admin"},
 	}
 }
 
@@ -101,19 +130,21 @@ func initBuiltInOrganization() bool {
 		DisplayName:        "Built-in Organization",
 		WebsiteUrl:         "https://example.com",
 		Favicon:            fmt.Sprintf("%s/img/casbin/favicon.ico", conf.GetConfigString("staticBaseUrl")),
-		PasswordType:       "plain",
+		PasswordType:       "bcrypt",
 		PasswordOptions:    []string{"AtLeast6"},
 		CountryCodes:       []string{"US", "ES", "FR", "DE", "GB", "CN", "JP", "KR", "VN", "ID", "SG", "IN"},
 		DefaultAvatar:      fmt.Sprintf("%s/img/casbin.svg", conf.GetConfigString("staticBaseUrl")),
+		DefaultTokenFormat: "JWT",
 		UserTypes:          []string{},
 		Tags:               []string{},
-		Languages:          []string{"en", "zh", "es", "fr", "de", "id", "ja", "ko", "ru", "vi", "pt"},
+		Languages:          []string{"en", "es", "fr", "de", "ja", "zh", "vi", "pt", "tr", "pl", "uk"},
 		InitScore:          2000,
-		AccountItems:       getBuiltInAccountItems(),
+		AccountItems:       GetDefaultAccountItems(),
 		EnableSoftDeletion: false,
 		IsProfilePublic:    false,
 		UseEmailAsUsername: false,
 		EnableTour:         true,
+		DcrPolicy:          "disabled",
 	}
 	_, err = AddOrganization(organization)
 	if err != nil {
@@ -179,6 +210,9 @@ func initBuiltInApplication() {
 		Name:           "app-built-in",
 		CreatedTime:    util.GetCurrentTime(),
 		DisplayName:    "Casdoor",
+		Category:       "Default",
+		Type:           "All",
+		Scopes:         []*ScopeItem{},
 		Logo:           fmt.Sprintf("%s/img/casdoor-logo_1185x256.png", conf.GetConfigString("staticBaseUrl")),
 		HomepageUrl:    "https://casdoor.org",
 		Organization:   "built-in",
@@ -203,6 +237,7 @@ func initBuiltInApplication() {
 			{Name: "Email", Visible: true, Required: true, Prompted: false, Rule: "Normal"},
 			{Name: "Phone", Visible: true, Required: true, Prompted: false, Rule: "None"},
 			{Name: "Agreement", Visible: true, Required: true, Prompted: false, Rule: "None"},
+			{Name: "Languages", Visible: true, Required: false, Prompted: false, Rule: "None"},
 		},
 		Tags:          []string{},
 		RedirectUris:  []string{},
@@ -210,6 +245,8 @@ func initBuiltInApplication() {
 		TokenFields:   []string{},
 		ExpireInHours: 168,
 		FormOffset:    2,
+
+		CookieExpireInHours: 720,
 	}
 	_, err = AddApplication(application)
 	if err != nil {
@@ -290,26 +327,47 @@ func initBuiltInLdap() {
 }
 
 func initBuiltInProvider() {
-	provider, err := GetProvider(util.GetId("admin", "provider_captcha_default"))
-	if err != nil {
-		panic(err)
+	providers := []*Provider{
+		{
+			Owner:       "admin",
+			Name:        "provider_captcha_default",
+			CreatedTime: util.GetCurrentTime(),
+			DisplayName: "Captcha Default",
+			Category:    "Captcha",
+			Type:        "Default",
+		},
+		{
+			Owner:       "admin",
+			Name:        "provider_balance",
+			CreatedTime: util.GetCurrentTime(),
+			DisplayName: "Balance",
+			Category:    "Payment",
+			Type:        "Balance",
+		},
+		{
+			Owner:       "admin",
+			Name:        "provider_payment_dummy",
+			CreatedTime: util.GetCurrentTime(),
+			DisplayName: "Dummy Payment",
+			Category:    "Payment",
+			Type:        "Dummy",
+		},
 	}
 
-	if provider != nil {
-		return
-	}
+	for _, provider := range providers {
+		existingProvider, err := GetProvider(util.GetId("admin", provider.Name))
+		if err != nil {
+			panic(err)
+		}
 
-	provider = &Provider{
-		Owner:       "admin",
-		Name:        "provider_captcha_default",
-		CreatedTime: util.GetCurrentTime(),
-		DisplayName: "Captcha Default",
-		Category:    "Captcha",
-		Type:        "Default",
-	}
-	_, err = AddProvider(provider)
-	if err != nil {
-		panic(err)
+		if existingProvider != nil {
+			continue
+		}
+
+		_, err = AddProvider(provider)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -379,7 +437,7 @@ e = some(where (p.eft == allow))
 m = (r.subOwner == p.subOwner || p.subOwner == "*") && \
     (r.subName == p.subName || p.subName == "*" || r.subName != "anonymous" && p.subName == "!anonymous") && \
     (r.method == p.method || p.method == "*") && \
-    (r.urlPath == p.urlPath || p.urlPath == "*") && \
+    (keyMatch2(r.urlPath, p.urlPath) || p.urlPath == "*") && \
     (r.objOwner == p.objOwner || p.objOwner == "*") && \
     (r.objName == p.objName || p.objName == "*") || \
     (r.subOwner == r.objOwner && r.subName == r.objName)`
@@ -417,7 +475,7 @@ func initBuiltInPermission() {
 		Groups:       []string{},
 		Roles:        []string{},
 		Domains:      []string{},
-		Model:        "user-model-built-in",
+		Model:        "built-in/user-model-built-in",
 		Adapter:      "",
 		ResourceType: "Application",
 		Resources:    []string{"app-built-in"},

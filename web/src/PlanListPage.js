@@ -44,18 +44,7 @@ class PlanListPage extends BaseListPage {
 
   addPlan() {
     const newPlan = this.newPlan();
-    PlanBackend.addPlan(newPlan)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/plans/${newPlan.owner}/${newPlan.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/plans/${newPlan.owner}/${newPlan.name}`, mode: "add", plan: newPlan});
   }
 
   deletePlan(i) {
@@ -130,19 +119,14 @@ class PlanListPage extends BaseListPage {
         ...this.getColumnSearchProps("displayName"),
       },
       {
-        title: i18next.t("payment:Currency"),
-        dataIndex: "currency",
-        key: "currency",
-        width: "120px",
-        sorter: true,
-        ...this.getColumnSearchProps("currency"),
-      },
-      {
-        title: i18next.t("plan:Price"),
+        title: i18next.t("order:Price"),
         dataIndex: "price",
         key: "price",
-        width: "130px",
+        width: "160px",
         ...this.getColumnSearchProps("price"),
+        render: (text, record, index) => {
+          return Setting.getPriceDisplay(record.price, record.currency);
+        },
       },
       {
         title: i18next.t("plan:Period"),
@@ -159,7 +143,7 @@ class PlanListPage extends BaseListPage {
         ...this.getColumnSearchProps("role"),
         render: (text, record, index) => {
           return (
-            <Link to={`/roles/${record.owner}/${text}`}>
+            <Link to={`/roles/${text}`}>
               {text}
             </Link>
           );
@@ -187,7 +171,7 @@ class PlanListPage extends BaseListPage {
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -198,10 +182,12 @@ class PlanListPage extends BaseListPage {
         width: "200px",
         fixed: (Setting.isMobile()) ? "false" : "right",
         render: (text, record, index) => {
+          const isAdmin = Setting.isLocalAdminUser(this.props.account);
           return (
             <div>
-              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push(`/plans/${record.owner}/${record.name}`)}>{i18next.t("general:Edit")}</Button>
+              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push({pathname: `/plans/${record.owner}/${record.name}`, mode: isAdmin ? "edit" : "view"})}>{isAdmin ? i18next.t("general:Edit") : i18next.t("general:View")}</Button>
               <PopconfirmModal
+                disabled={!isAdmin}
                 title={i18next.t("general:Sure to delete") + `: ${record.name} ?`}
                 onConfirm={() => this.deletePlan(index)}
               >
@@ -221,14 +207,17 @@ class PlanListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={plans} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
-          title={() => (
-            <div>
-              {i18next.t("general:Plans")}&nbsp;&nbsp;&nbsp;&nbsp;
-              <Button type="primary" size="small" onClick={this.addPlan.bind(this)}>{i18next.t("general:Add")}</Button>
-            </div>
-          )}
-          loading={this.state.loading}
+        <Table scroll={{x: true}} columns={columns} dataSource={plans} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+          title={() => {
+            const isAdmin = Setting.isLocalAdminUser(this.props.account);
+            return (
+              <div>
+                {i18next.t("general:Plans")}&nbsp;&nbsp;&nbsp;&nbsp;
+                <Button type="primary" size="small" disabled={!isAdmin} onClick={this.addPlan.bind(this)}>{i18next.t("general:Add")}</Button>
+              </div>
+            );
+          }}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

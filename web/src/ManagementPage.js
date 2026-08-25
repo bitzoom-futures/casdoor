@@ -14,17 +14,19 @@
 
 import * as Setting from "./Setting";
 import {Avatar, Button, Card, Drawer, Dropdown, Menu, Result, Tooltip} from "antd";
+import Sider from "antd/es/layout/Sider";
 import EnableMfaNotification from "./common/notifaction/EnableMfaNotification";
 import {Link, Redirect, Route, Switch, withRouter} from "react-router-dom";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import i18next from "i18next";
 import {
-  AppstoreTwoTone,
-  BarsOutlined, DeploymentUnitOutlined, DollarTwoTone, DownOutlined,
-  HomeTwoTone,
-  LockTwoTone, LogoutOutlined,
-  SafetyCertificateTwoTone, SettingOutlined, SettingTwoTone,
-  WalletTwoTone
+  AppstoreOutlined,
+  BarsOutlined, CheckCircleOutlined, DeploymentUnitOutlined, DollarOutlined, DownOutlined,
+  HomeOutlined,
+  LockOutlined, LogoutOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined,
+  SafetyCertificateOutlined, SettingOutlined,
+  WalletOutlined
 } from "@ant-design/icons";
 import Dashboard from "./basic/Dashboard";
 import AppListPage from "./basic/AppListPage";
@@ -47,6 +49,8 @@ import RecordListPage from "./RecordListPage";
 import ResourceListPage from "./ResourceListPage";
 import CertListPage from "./CertListPage";
 import CertEditPage from "./CertEditPage";
+import KeyListPage from "./KeyListPage";
+import KeyEditPage from "./KeyEditPage";
 import RoleListPage from "./RoleListPage";
 import RoleEditPage from "./RoleEditPage";
 import PermissionListPage from "./PermissionListPage";
@@ -61,8 +65,15 @@ import SessionListPage from "./SessionListPage";
 import TokenListPage from "./TokenListPage";
 import TokenEditPage from "./TokenEditPage";
 import ProductListPage from "./ProductListPage";
+import ProductStorePage from "./ProductStorePage";
 import ProductEditPage from "./ProductEditPage";
 import ProductBuyPage from "./ProductBuyPage";
+import CartListPage from "./CartListPage";
+import CouponListPage from "./CouponListPage";
+import CouponEditPage from "./CouponEditPage";
+import OrderListPage from "./OrderListPage";
+import OrderEditPage from "./OrderEditPage";
+import OrderPayPage from "./OrderPayPage";
 import PaymentListPage from "./PaymentListPage";
 import PaymentEditPage from "./PaymentEditPage";
 import PaymentResultPage from "./PaymentResultPage";
@@ -78,6 +89,7 @@ import FormEditPage from "./FormEditPage";
 import SyncerListPage from "./SyncerListPage";
 import SyncerEditPage from "./SyncerEditPage";
 import WebhookListPage from "./WebhookListPage";
+import WebhookEventListPage from "./WebhookEventListPage";
 import WebhookEditPage from "./WebhookEditPage";
 import LdapEditPage from "./LdapEditPage";
 import LdapSyncPage from "./LdapSyncPage";
@@ -89,17 +101,88 @@ import ThemeSelect from "./common/select/ThemeSelect";
 import OpenTour from "./common/OpenTour";
 import OrganizationSelect from "./common/select/OrganizationSelect";
 import AccountAvatar from "./account/AccountAvatar";
+import BreadcrumbBar from "./common/BreadcrumbBar";
 import {Content, Header} from "antd/es/layout/layout";
 import * as AuthBackend from "./auth/AuthBackend";
 import {clearWeb3AuthToken} from "./auth/Web3Auth";
 import TransactionListPage from "./TransactionListPage";
 import TransactionEditPage from "./TransactionEditPage";
 import VerificationListPage from "./VerificationListPage";
+import TicketListPage from "./TicketListPage";
+import TicketEditPage from "./TicketEditPage";
+import * as Cookie from "cookie";
+import * as UserBackend from "./backend/UserBackend";
+import AgentListPage from "./AgentListPage";
+import AgentEditPage from "./AgentEditPage";
+import ServerListPage from "./ServerListPage";
+import ServerStorePage from "./ServerStorePage";
+import ServerEditPage from "./ServerEditPage";
+import EntryListPage from "./EntryListPage";
+import EntryEditPage from "./EntryEditPage";
+import OpenClawSessionTranscriptPage from "./OpenClawSessionTranscriptPage";
+import SiteListPage from "./SiteListPage";
+import SiteEditPage from "./SiteEditPage";
+import RuleListPage from "./RuleListPage";
+import RuleEditPage from "./RuleEditPage";
+
+function getMenuParentKey(uri) {
+  if (!uri) {return null;}
+  if (uri === "/" || uri.includes("/shortcuts") || uri.includes("/apps")) {return "/home";}
+  if (uri.includes("/organizations") || uri.includes("/trees") || uri.includes("/groups") || uri.includes("/users") || uri.includes("/invitations")) {return "/orgs";}
+  if (uri.includes("/applications") || uri.includes("/providers") || uri.includes("/resources") || uri.includes("/certs") || uri.includes("/keys")) {return "/identity";}
+  if (uri.includes("/agents") || uri.includes("/servers") || uri.includes("/server-store") || uri.includes("/entries") || uri.includes("/sites") || uri.includes("/rules")) {return "/gateway";}
+  if (uri.includes("/roles") || uri.includes("/permissions") || uri.includes("/models") || uri.includes("/adapters") || uri.includes("/enforcers")) {return "/auth";}
+  if (uri.includes("/records") || uri.includes("/tokens") || uri.includes("/sessions") || uri.includes("/verifications")) {return "/logs";}
+  if (uri.includes("/product-store") || uri.includes("/products") || uri.includes("/coupons") || uri.includes("/orders") || uri.includes("/payments") || uri.includes("/plans") || uri.includes("/pricings") || uri.includes("/subscriptions") || uri.includes("/transactions") || uri.includes("/cart")) {return "/business";}
+  if (uri.includes("/sysinfo") || uri.includes("/forms") || uri.includes("/syncers") || uri.includes("/webhooks") || uri.includes("/webhook-events") || uri.includes("/tickets")) {return "/admin";}
+  return null;
+}
 
 function ManagementPage(props) {
   const [menuVisible, setMenuVisible] = useState(false);
-  const navItems = props.account?.organization?.navItems;
-  const widgetItems = props.account?.organization?.widgetItems;
+  const [siderCollapsed, setSiderCollapsed] = useState(() => localStorage.getItem("siderCollapsed") === "true");
+  const [menuOpenKeys, setMenuOpenKeys] = useState(() => {
+    if (localStorage.getItem("siderCollapsed") === "true") {
+      return [];
+    }
+    const parentKey = getMenuParentKey(props.uri || location.pathname);
+    return parentKey ? [parentKey] : [];
+  });
+
+  useEffect(() => {
+    if (siderCollapsed) {
+      setMenuOpenKeys([]);
+      return;
+    }
+    const parentKey = getMenuParentKey(props.uri);
+    if (parentKey) {
+      setMenuOpenKeys(prev =>
+        prev.includes(parentKey) ? prev : [...prev, parentKey]
+      );
+    }
+  }, [props.uri, siderCollapsed]);
+  const organization = props.account?.organization;
+  const navItems = Setting.isLocalAdminUser(props.account) ? organization?.navItems : (organization?.userNavItems ?? []);
+  const widgetItems = organization?.widgetItems;
+  const currentUri = props.uri || location.pathname;
+  const selectedLeafKey = "/" + (currentUri.split("/").filter(Boolean)[0] || "");
+
+  const isDark = props.themeAlgorithm.includes("dark");
+  const textColor = isDark ? "white" : "black";
+  const siderLogo = (() => {
+    if (!props.account?.organization) {return Setting.getLogo(props.themeAlgorithm);}
+    let logo = props.account.organization.logo || Setting.getLogo(props.themeAlgorithm);
+    if (isDark && props.account.organization.logoDark) {
+      logo = props.account.organization.logoDark;
+    }
+    return logo;
+  })();
+
+  const toggleSider = () => {
+    const next = !siderCollapsed;
+    setSiderCollapsed(next);
+    localStorage.setItem("siderCollapsed", String(next));
+  };
 
   function logout() {
     AuthBackend.logout()
@@ -124,21 +207,21 @@ function ManagementPage(props) {
   }
 
   function renderAvatar() {
-    if (props.account.avatar === "") {
+    const avatarUrl = Setting.getEffectiveAvatarUrl(props.account);
+    if (!avatarUrl) {
       return (
-        <Avatar style={{backgroundColor: Setting.getAvatarColor(props.account.name), verticalAlign: "middle"}} size="large">
-          {Setting.getShortName(props.account.name)}
-        </Avatar>
-      );
-    } else {
-      return (
-        <Avatar src={props.account.avatar} style={{verticalAlign: "middle"}} size="large"
-          icon={<AccountAvatar src={props.account.avatar} style={{verticalAlign: "middle"}} size={40} />}
-        >
-          {Setting.getShortName(props.account.name)}
-        </Avatar>
+        <div style={{verticalAlign: "middle", marginLeft: 8, display: "inline-flex"}}>
+          {Setting.getAvatarPlaceholder(props.account.name, 40)}
+        </div>
       );
     }
+    return (
+      <Avatar src={avatarUrl} style={{verticalAlign: "middle", marginLeft: 8}} size="large"
+        icon={<AccountAvatar src={avatarUrl} style={{verticalAlign: "middle"}} size={40} />}
+      >
+        {Setting.getShortName(props.account.name)}
+      </Avatar>
+    );
   }
 
   function renderRightDropdown() {
@@ -148,8 +231,14 @@ function ManagementPage(props) {
         "/account"
       ));
     }
-    items.push(Setting.getItem(<><LogoutOutlined />&nbsp;&nbsp;{i18next.t("account:Logout")}</>,
-      "/logout"));
+    const curCookie = Cookie.parse(document.cookie);
+    if (curCookie["impersonateUser"]) {
+      items.push(Setting.getItem(<><LogoutOutlined />&nbsp;&nbsp;{i18next.t("account:Exit impersonation")}</>,
+        "/exit-impersonation"));
+    } else {
+      items.push(Setting.getItem(<><LogoutOutlined />&nbsp;&nbsp;{i18next.t("account:Logout")}</>,
+        "/logout"));
+    }
 
     const onClick = (e) => {
       if (e.key === "/account") {
@@ -158,21 +247,31 @@ function ManagementPage(props) {
         props.history.push("/subscription");
       } else if (e.key === "/logout") {
         logout();
+      } else if (e.key === "/exit-impersonation") {
+        UserBackend.exitImpersonateUser(props.account.owner, props.account.name).then((res) => {
+          if (res.status === "ok") {
+            Setting.showMessage("success", i18next.t("account:Exit impersonation"));
+            Setting.goToLinkSoft({props}, "/");
+            window.location.reload();
+          } else {
+            Setting.showMessage("error", res.msg);
+          }
+        });
       }
     };
 
     return (
-      <Dropdown key="/rightDropDown" menu={{items, onClick}} >
+      <Dropdown key="/rightDropDown" menu={{items, onClick}} placement="bottomRight" >
         <div className="rightDropDown">
           {
             renderAvatar()
           }
-                    &nbsp;
-                    &nbsp;
+          &nbsp;
+          &nbsp;
           {Setting.isMobile() ? null : Setting.getShortText(Setting.getNameAtLeast(props.account.displayName), 30)} &nbsp; <DownOutlined />
-                    &nbsp;
-                    &nbsp;
-                    &nbsp;
+          &nbsp;
+          &nbsp;
+          &nbsp;
         </div>
       </Dropdown>
     );
@@ -186,12 +285,16 @@ function ManagementPage(props) {
     return !Array.isArray(widgetItems) || !!widgetItems?.includes("all");
   }
 
+  function isSpecialMenuItem(item) {
+    return item.key === "#" || item.key === "logo";
+  }
+
   function renderWidgets() {
     const widgets = [
       Setting.getItem(<ThemeSelect themeAlgorithm={props.themeAlgorithm} onChange={props.setLogoAndThemeAlgorithm} />, "theme"),
       Setting.getItem(<LanguageSelect languages={props.account.organization.languages} />, "language"),
       Setting.getItem(Conf.AiAssistantUrl?.trim() && (
-        <Tooltip title="Click to open AI assistant">
+        <Tooltip title={i18next.t("general:Click to open AI assistant")}>
           <div className="select-box" onClick={props.openAiAssistant}>
             <DeploymentUnitOutlined style={{fontSize: "24px"}} />
           </div>
@@ -201,10 +304,10 @@ function ManagementPage(props) {
     ];
 
     if (widgetItemsIsAll()) {
-      return widgets.map(item => item.label);
+      return widgets.reverse().map(item => item.label);
     }
 
-    return widgets.filter(item => widgetItems.includes(item.key)).map(item => item.label);
+    return widgets.filter(item => widgetItems.includes(item.key)).reverse().map(item => item.label);
   }
 
   function renderAccountMenu() {
@@ -219,19 +322,26 @@ function ManagementPage(props) {
     } else {
       return (
         <React.Fragment>
-          {renderRightDropdown()}
-          {renderWidgets()}
-          {Setting.isAdminUser(props.account) && (props.uri.indexOf("/trees") === -1) &&
-                        <OrganizationSelect
-                          initValue={Setting.getOrganization()}
-                          withAll={true}
-                          className="org-select"
-                          style={{display: Setting.isMobile() ? "none" : "flex"}}
-                          onChange={(value) => {
-                            Setting.setOrganization(value);
-                          }}
-                        />
+          {Setting.isLocalAdminUser(props.account) && Conf.ShowGithubCorner && !Setting.isMobile() &&
+            <a href={"https://casdoor.com"} target="_blank" rel="noreferrer" style={{marginRight: "8px"}}>
+              <span className="saas-hosting-btn">
+                🚀 SaaS Hosting 🔥
+              </span>
+            </a>
           }
+          {Setting.isAdminUser(props.account) && (props.uri.indexOf("/trees") === -1) &&
+            <OrganizationSelect
+              initValue={Setting.getOrganization()}
+              withAll={true}
+              className="org-select"
+              style={{display: Setting.isMobile() ? "none" : "flex", backgroundColor: isDark ? "black" : "white", color: textColor}}
+              onChange={(value) => {
+                Setting.setOrganization(value);
+              }}
+            />
+          }
+          {renderWidgets()}
+          {renderRightDropdown()}
         </React.Fragment>
       );
     }
@@ -244,104 +354,86 @@ function ManagementPage(props) {
       return [];
     }
 
-    let textColor = "black";
-    const twoToneColor = props.themeData.colorPrimary;
-
-    let logo = props.account.organization.logo ? props.account.organization.logo : Setting.getLogo(props.themeAlgorithm);
-    if (props.themeAlgorithm.includes("dark")) {
-      if (props.account.organization.logoDark) {
-        logo = props.account.organization.logoDark;
-      }
-      textColor = "white";
-    }
-
-    !Setting.isMobile() ? res.push({
-      label:
-            <Link to="/">
-              <img className="logo" src={logo ?? props.logo} alt="logo" />
-            </Link>,
-      disabled: true, key: "logo",
-      style: {
-        padding: 0,
-        height: "auto",
-      },
-    }) : null;
-
-    res.push(Setting.getItem(<Link style={{color: textColor}} to="/">{i18next.t("general:Home")}</Link>, "/home", <HomeTwoTone twoToneColor={twoToneColor} />, [
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/">{i18next.t("general:Home")}</Link>, "/home", <HomeOutlined />, [
       Setting.getItem(<Link to="/">{i18next.t("general:Dashboard")}</Link>, "/"),
       Setting.getItem(<Link to="/shortcuts">{i18next.t("general:Shortcuts")}</Link>, "/shortcuts"),
       Setting.getItem(<Link to="/apps">{i18next.t("general:Apps")}</Link>, "/apps"),
+    ]));
+
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/organizations">{i18next.t("general:User Management")}</Link>, "/orgs", <AppstoreOutlined />, [
+      Setting.getItem(<Link to="/organizations">{i18next.t("general:Organizations")}</Link>, "/organizations"),
+      Setting.getItem(<Link to="/groups">{i18next.t("general:Groups")}</Link>, "/groups"),
+      Setting.getItem(<Link to="/users">{i18next.t("general:Users")}</Link>, "/users"),
+      Setting.getItem(<Link to="/invitations">{i18next.t("general:Invitations")}</Link>, "/invitations"),
+    ]));
+
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/applications">{i18next.t("general:Identity")}</Link>, "/identity", <LockOutlined />, [
+      Setting.getItem(<Link to="/applications">{i18next.t("general:Applications")}</Link>, "/applications"),
+      Setting.getItem(<Link to="/providers">{i18next.t("application:Providers")}</Link>, "/providers"),
+      Setting.getItem(<Link to="/resources">{i18next.t("general:Resources")}</Link>, "/resources"),
+      Setting.getItem(<Link to="/certs">{i18next.t("general:Certs")}</Link>, "/certs"),
+      Setting.getItem(<Link to="/keys">{i18next.t("general:Keys")}</Link>, "/keys"),
+    ]));
+
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/roles">{i18next.t("general:Authorization")}</Link>, "/auth", <SafetyCertificateOutlined />, [
+      Setting.getItem(<Link to="/roles">{i18next.t("general:Roles")}</Link>, "/roles"),
+      Setting.getItem(<Link to="/permissions">{i18next.t("general:Permissions")}</Link>, "/permissions"),
+      Setting.getItem(<Link to="/models">{i18next.t("general:Models")}</Link>, "/models"),
+      Setting.getItem(<Link to="/adapters">{i18next.t("general:Adapters")}</Link>, "/adapters"),
+      Setting.getItem(<Link to="/enforcers">{i18next.t("general:Enforcers")}</Link>, "/enforcers"),
     ].filter(item => {
-      return Setting.isLocalAdminUser(props.account);
+      if (!Setting.isLocalAdminUser(props.account) && ["/models", "/adapters", "/enforcers"].includes(item.key)) {
+        return false;
+      } else {
+        return true;
+      }
     })));
 
-    if (Setting.isLocalAdminUser(props.account)) {
-      if (Conf.ShowGithubCorner) {
-        res.push(Setting.getItem(<a href={"https://casdoor.com"}>
-          <span style={{fontWeight: "bold", backgroundColor: "rgba(87,52,211,0.4)", marginTop: "12px", paddingLeft: "5px", paddingRight: "5px", display: "flex", alignItems: "center", height: "40px", borderRadius: "5px"}}>
-            🚀 SaaS Hosting 🔥
-          </span>
-        </a>, "#"));
-      }
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/sites">{i18next.t("general:LLM AI")}</Link>, "/gateway", <CheckCircleOutlined />, [
+      Setting.getItem(<Link to="/agents">{i18next.t("general:Agents")}</Link>, "/agents"),
+      Setting.getItem(<Link to="/servers">{i18next.t("general:MCP Servers")}</Link>, "/servers"),
+      Setting.getItem(<Link to="/server-store">{i18next.t("general:MCP Store")}</Link>, "/server-store"),
+      Setting.getItem(<Link to="/entries">{i18next.t("general:Entries")}</Link>, "/entries"),
+      Setting.getItem(<Link to="/sites">{i18next.t("general:Sites")}</Link>, "/sites"),
+      Setting.getItem(<Link to="/rules">{i18next.t("general:Rules")}</Link>, "/rules"),
+    ]));
 
-      res.push(Setting.getItem(<Link style={{color: textColor}} to="/organizations">{i18next.t("general:User Management")}</Link>, "/orgs", <AppstoreTwoTone twoToneColor={twoToneColor} />, [
-        Setting.getItem(<Link to="/organizations">{i18next.t("general:Organizations")}</Link>, "/organizations"),
-        Setting.getItem(<Link to="/groups">{i18next.t("general:Groups")}</Link>, "/groups"),
-        Setting.getItem(<Link to="/users">{i18next.t("general:Users")}</Link>, "/users"),
-        Setting.getItem(<Link to="/invitations">{i18next.t("general:Invitations")}</Link>, "/invitations"),
-      ]));
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/sessions">{i18next.t("general:Auditing")}</Link>, "/logs", <WalletOutlined />, [
+      Setting.getItem(<Link to="/sessions">{i18next.t("general:Sessions")}</Link>, "/sessions"),
+      Setting.getItem(<Link to="/records">{i18next.t("general:Records")}</Link>, "/records"),
+      Setting.getItem(<Link to="/tokens">{i18next.t("general:Tokens")}</Link>, "/tokens"),
+      Setting.getItem(<Link to="/verifications">{i18next.t("general:Verifications")}</Link>, "/verifications"),
+    ]));
 
-      res.push(Setting.getItem(<Link style={{color: textColor}} to="/applications">{i18next.t("general:Identity")}</Link>, "/identity", <LockTwoTone twoToneColor={twoToneColor} />, [
-        Setting.getItem(<Link to="/applications">{i18next.t("general:Applications")}</Link>, "/applications"),
-        Setting.getItem(<Link to="/providers">{i18next.t("general:Providers")}</Link>, "/providers"),
-        Setting.getItem(<Link to="/resources">{i18next.t("general:Resources")}</Link>, "/resources"),
-        Setting.getItem(<Link to="/certs">{i18next.t("general:Certs")}</Link>, "/certs"),
-      ]));
+    res.push(Setting.getItem(<Link style={{color: textColor}} to="/products">{i18next.t("general:Business")}</Link>, "/business", <DollarOutlined />, [
+      Setting.getItem(<Link to="/product-store">{i18next.t("general:Product Store")}</Link>, "/product-store"),
+      Setting.getItem(<Link to="/products">{i18next.t("general:Products")}</Link>, "/products"),
+      Setting.getItem(<Link to="/coupons">{i18next.t("general:Coupons")}</Link>, "/coupons"),
+      Setting.getItem(<Link to="/cart">{i18next.t("general:Cart")}</Link>, "/cart"),
+      Setting.getItem(<Link to="/orders">{i18next.t("general:Orders")}</Link>, "/orders"),
+      Setting.getItem(<Link to="/payments">{i18next.t("general:Payments")}</Link>, "/payments"),
+      Setting.getItem(<Link to="/plans">{i18next.t("general:Plans")}</Link>, "/plans"),
+      Setting.getItem(<Link to="/pricings">{i18next.t("general:Pricings")}</Link>, "/pricings"),
+      Setting.getItem(<Link to="/subscriptions">{i18next.t("general:Subscriptions")}</Link>, "/subscriptions"),
+      Setting.getItem(<Link to="/transactions">{i18next.t("general:Transactions")}</Link>, "/transactions"),
+    ]));
 
-      res.push(Setting.getItem(<Link style={{color: textColor}} to="/roles">{i18next.t("general:Authorization")}</Link>, "/auth", <SafetyCertificateTwoTone twoToneColor={twoToneColor} />, [
-        Setting.getItem(<Link to="/roles">{i18next.t("general:Roles")}</Link>, "/roles"),
-        Setting.getItem(<Link to="/permissions">{i18next.t("general:Permissions")}</Link>, "/permissions"),
-        Setting.getItem(<Link to="/models">{i18next.t("general:Models")}</Link>, "/models"),
-        Setting.getItem(<Link to="/adapters">{i18next.t("general:Adapters")}</Link>, "/adapters"),
-        Setting.getItem(<Link to="/enforcers">{i18next.t("general:Enforcers")}</Link>, "/enforcers"),
-      ].filter(item => {
-        if (!Setting.isLocalAdminUser(props.account) && ["/models", "/adapters", "/enforcers"].includes(item.key)) {
-          return false;
-        } else {
-          return true;
-        }
-      })));
-
-      res.push(Setting.getItem(<Link style={{color: textColor}} to="/sessions">{i18next.t("general:Logging & Auditing")}</Link>, "/logs", <WalletTwoTone twoToneColor={twoToneColor} />, [
-        Setting.getItem(<Link to="/sessions">{i18next.t("general:Sessions")}</Link>, "/sessions"),
-        Conf.CasvisorUrl ? Setting.getItem(<a target="_blank" rel="noreferrer" href={Conf.CasvisorUrl}>{i18next.t("general:Records")}</a>, "/records")
-          : Setting.getItem(<Link to="/records">{i18next.t("general:Records")}</Link>, "/records"),
-        Setting.getItem(<Link to="/tokens">{i18next.t("general:Tokens")}</Link>, "/tokens"),
-        Setting.getItem(<Link to="/verifications">{i18next.t("general:Verifications")}</Link>, "/verifications"),
-      ]));
-
-      res.push(Setting.getItem(<Link style={{color: textColor}} to="/products">{i18next.t("general:Business & Payments")}</Link>, "/business", <DollarTwoTone twoToneColor={twoToneColor} />, [
-        Setting.getItem(<Link to="/products">{i18next.t("general:Products")}</Link>, "/products"),
-        Setting.getItem(<Link to="/payments">{i18next.t("general:Payments")}</Link>, "/payments"),
-        Setting.getItem(<Link to="/plans">{i18next.t("general:Plans")}</Link>, "/plans"),
-        Setting.getItem(<Link to="/pricings">{i18next.t("general:Pricings")}</Link>, "/pricings"),
-        Setting.getItem(<Link to="/subscriptions">{i18next.t("general:Subscriptions")}</Link>, "/subscriptions"),
-        Setting.getItem(<Link to="/transactions">{i18next.t("general:Transactions")}</Link>, "/transactions"),
-      ]));
-
-      if (Setting.isAdminUser(props.account)) {
-        res.push(Setting.getItem(<Link style={{color: textColor}} to="/sysinfo">{i18next.t("general:Admin")}</Link>, "/admin", <SettingTwoTone twoToneColor={twoToneColor} />, [
-          Setting.getItem(<Link to="/sysinfo">{i18next.t("general:System Info")}</Link>, "/sysinfo"),
-          Setting.getItem(<Link to="/forms">{i18next.t("general:Forms")}</Link>, "/forms"),
-          Setting.getItem(<Link to="/syncers">{i18next.t("general:Syncers")}</Link>, "/syncers"),
-          Setting.getItem(<Link to="/webhooks">{i18next.t("general:Webhooks")}</Link>, "/webhooks"),
-          Setting.getItem(<a target="_blank" rel="noreferrer" href={Setting.isLocalhost() ? `${Setting.ServerUrl}/swagger` : "/swagger"}>{i18next.t("general:Swagger")}</a>, "/swagger")]));
-      } else {
-        res.push(Setting.getItem(<Link style={{color: textColor}} to="/syncers">{i18next.t("general:Admin")}</Link>, "/admin", <SettingTwoTone twoToneColor={twoToneColor} />, [
-          Setting.getItem(<Link to="/forms">{i18next.t("general:Forms")}</Link>, "/forms"),
-          Setting.getItem(<Link to="/syncers">{i18next.t("general:Syncers")}</Link>, "/syncers"),
-          Setting.getItem(<Link to="/webhooks">{i18next.t("general:Webhooks")}</Link>, "/webhooks")]));
-      }
+    if (Setting.isAdminUser(props.account)) {
+      res.push(Setting.getItem(<Link style={{color: textColor}} to="/sysinfo">{i18next.t("general:Admin")}</Link>, "/admin", <SettingOutlined />, [
+        Setting.getItem(<Link to="/sysinfo">{i18next.t("general:System Info")}</Link>, "/sysinfo"),
+        Setting.getItem(<Link to="/forms">{i18next.t("general:Forms")}</Link>, "/forms"),
+        Setting.getItem(<Link to="/syncers">{i18next.t("general:Syncers")}</Link>, "/syncers"),
+        Setting.getItem(<Link to="/webhooks">{i18next.t("general:Webhooks")}</Link>, "/webhooks"),
+        Setting.getItem(<Link to="/webhook-events">{i18next.t("general:Webhook Events")}</Link>, "/webhook-events"),
+        Setting.getItem(<Link to="/tickets">{i18next.t("general:Tickets")}</Link>, "/tickets"),
+        Setting.getItem(<a target="_blank" rel="noreferrer" href={Setting.isLocalhost() ? `${Setting.ServerUrl}/swagger` : "/swagger"}>{i18next.t("general:Swagger")}</a>, "/swagger")]));
+    } else {
+      res.push(Setting.getItem(<Link style={{color: textColor}} to="/syncers">{i18next.t("general:Admin")}</Link>, "/admin", <SettingOutlined />, [
+        Setting.getItem(<Link to="/forms">{i18next.t("general:Forms")}</Link>, "/forms"),
+        Setting.getItem(<Link to="/syncers">{i18next.t("general:Syncers")}</Link>, "/syncers"),
+        Setting.getItem(<Link to="/webhooks">{i18next.t("general:Webhooks")}</Link>, "/webhooks"),
+        Setting.getItem(<Link to="/webhook-events">{i18next.t("general:Webhook Events")}</Link>, "/webhook-events"),
+        Setting.getItem(<Link to="/tickets">{i18next.t("general:Tickets")}</Link>, "/tickets")]));
     }
 
     if (navItemsIsAll()) {
@@ -363,20 +455,55 @@ function ManagementPage(props) {
       return item;
     });
 
-    return resFiltered.filter(item => {
-      if (item.key === "#" || item.key === "logo") {return true;}
+    const filteredResult = resFiltered.filter(item => {
+      if (isSpecialMenuItem(item)) {return true;}
       return Array.isArray(item.children) && item.children.length > 0;
     });
+
+    // Count total end items (leaf nodes)
+    let totalEndItems = 0;
+    filteredResult.forEach(item => {
+      if (Array.isArray(item.children)) {
+        totalEndItems += item.children.length;
+      }
+    });
+
+    // If total end items <= MaxItemsForFlatMenu, flatten the menu (show only one level)
+    if (totalEndItems <= Conf.MaxItemsForFlatMenu) {
+      const flattenedResult = [];
+      filteredResult.forEach(item => {
+        if (isSpecialMenuItem(item)) {
+          flattenedResult.push(item);
+        } else if (Array.isArray(item.children)) {
+          // Add children directly without parent group
+          item.children.forEach(child => {
+            flattenedResult.push(child);
+          });
+        }
+      });
+      return flattenedResult;
+    }
+
+    return filteredResult;
   }
 
   function renderLoginIfNotLoggedIn(component) {
     if (props.account === null) {
+      const lastLoginOrg = localStorage.getItem("lastLoginOrg");
       sessionStorage.setItem("from", window.location.pathname);
-      return <Redirect to="/login" />;
+      if (lastLoginOrg) {
+        return <Redirect to={`/login/${lastLoginOrg}`} />;
+      } else {
+        return <Redirect to="/login" />;
+      }
     } else if (props.account === undefined) {
       return null;
     } else if (props.account.needUpdatePassword) {
-      return <Redirect to={"/forget/" + props.application.name} />;
+      if (window.location.pathname === "/account") {
+        return component;
+      } else {
+        return <Redirect to="/account" />;
+      }
     } else {
       return component;
     }
@@ -411,6 +538,20 @@ function ManagementPage(props) {
         <Route exact path="/resources" render={(props) => renderLoginIfNotLoggedIn(<ResourceListPage account={account} {...props} />)} />
         <Route exact path="/certs" render={(props) => renderLoginIfNotLoggedIn(<CertListPage account={account} {...props} />)} />
         <Route exact path="/certs/:organizationName/:certName" render={(props) => renderLoginIfNotLoggedIn(<CertEditPage account={account} {...props} />)} />
+        <Route exact path="/keys" render={(props) => renderLoginIfNotLoggedIn(<KeyListPage account={account} {...props} />)} />
+        <Route exact path="/keys/:organizationName/:keyName" render={(props) => renderLoginIfNotLoggedIn(<KeyEditPage account={account} {...props} />)} />
+        <Route exact path="/agents" render={(props) => renderLoginIfNotLoggedIn(<AgentListPage account={account} {...props} />)} />
+        <Route exact path="/agents/:organizationName/:agentName" render={(props) => renderLoginIfNotLoggedIn(<AgentEditPage account={account} {...props} />)} />
+        <Route exact path="/servers" render={(props) => renderLoginIfNotLoggedIn(<ServerListPage account={account} {...props} />)} />
+        <Route exact path="/server-store" render={(props) => renderLoginIfNotLoggedIn(<ServerStorePage account={account} {...props} />)} />
+        <Route exact path="/servers/:organizationName/:serverName" render={(props) => renderLoginIfNotLoggedIn(<ServerEditPage account={account} {...props} />)} />
+        <Route exact path="/entries" render={(props) => renderLoginIfNotLoggedIn(<EntryListPage account={account} {...props} />)} />
+        <Route exact path="/entries/:organizationName/:entryName/transcript" render={(props) => renderLoginIfNotLoggedIn(<OpenClawSessionTranscriptPage account={account} {...props} />)} />
+        <Route exact path="/entries/:organizationName/:entryName" render={(props) => renderLoginIfNotLoggedIn(<EntryEditPage account={account} {...props} />)} />
+        <Route exact path="/sites" render={(props) => renderLoginIfNotLoggedIn(<SiteListPage account={account} {...props} />)} />
+        <Route exact path="/sites/:organizationName/:siteName" render={(props) => renderLoginIfNotLoggedIn(<SiteEditPage account={account} {...props} />)} />
+        <Route exact path="/rules" render={(props) => renderLoginIfNotLoggedIn(<RuleListPage account={account} {...props} />)} />
+        <Route exact path="/rules/:organizationName/:ruleName" render={(props) => renderLoginIfNotLoggedIn(<RuleEditPage account={account} {...props} />)} />
         <Route exact path="/verifications" render={(props) => renderLoginIfNotLoggedIn(<VerificationListPage account={account} {...props} />)} />
         <Route exact path="/roles" render={(props) => renderLoginIfNotLoggedIn(<RoleListPage account={account} {...props} />)} />
         <Route exact path="/roles/:organizationName/:roleName" render={(props) => renderLoginIfNotLoggedIn(<RoleEditPage account={account} {...props} />)} />
@@ -425,9 +566,16 @@ function ManagementPage(props) {
         <Route exact path="/sessions" render={(props) => renderLoginIfNotLoggedIn(<SessionListPage account={account} {...props} />)} />
         <Route exact path="/tokens" render={(props) => renderLoginIfNotLoggedIn(<TokenListPage account={account} {...props} />)} />
         <Route exact path="/tokens/:tokenName" render={(props) => renderLoginIfNotLoggedIn(<TokenEditPage account={account} {...props} />)} />
+        <Route exact path="/product-store" render={(props) => renderLoginIfNotLoggedIn(<ProductStorePage account={account} {...props} />)} />
         <Route exact path="/products" render={(props) => renderLoginIfNotLoggedIn(<ProductListPage account={account} {...props} />)} />
         <Route exact path="/products/:organizationName/:productName" render={(props) => renderLoginIfNotLoggedIn(<ProductEditPage account={account} {...props} />)} />
         <Route exact path="/products/:organizationName/:productName/buy" render={(props) => renderLoginIfNotLoggedIn(<ProductBuyPage account={account} {...props} />)} />
+        <Route exact path="/coupons" render={(props) => renderLoginIfNotLoggedIn(<CouponListPage account={account} {...props} />)} />
+        <Route exact path="/coupons/:organizationName/:couponName" render={(props) => renderLoginIfNotLoggedIn(<CouponEditPage account={account} {...props} />)} />
+        <Route exact path="/cart" render={(props) => renderLoginIfNotLoggedIn(<CartListPage account={account} {...props} />)} />
+        <Route exact path="/orders" render={(props) => renderLoginIfNotLoggedIn(<OrderListPage account={account} {...props} />)} />
+        <Route exact path="/orders/:organizationName/:orderName" render={(props) => renderLoginIfNotLoggedIn(<OrderEditPage account={account} {...props} />)} />
+        <Route exact path="/orders/:organizationName/:orderName/pay" render={(props) => renderLoginIfNotLoggedIn(<OrderPayPage account={account} {...props} />)} />
         <Route exact path="/payments" render={(props) => renderLoginIfNotLoggedIn(<PaymentListPage account={account} {...props} />)} />
         <Route exact path="/payments/:organizationName/:paymentName" render={(props) => renderLoginIfNotLoggedIn(<PaymentEditPage account={account} {...props} />)} />
         <Route exact path="/payments/:organizationName/:paymentName/result" render={(props) => renderLoginIfNotLoggedIn(<PaymentResultPage account={account} {...props} />)} />
@@ -441,11 +589,14 @@ function ManagementPage(props) {
         <Route exact path="/forms" render={(props) => renderLoginIfNotLoggedIn(<FormListPage account={account} {...props} />)} />
         <Route exact path="/forms/:formName" render={(props) => renderLoginIfNotLoggedIn(<FormEditPage account={account} {...props} />)} />
         <Route exact path="/syncers" render={(props) => renderLoginIfNotLoggedIn(<SyncerListPage account={account} {...props} />)} />
-        <Route exact path="/syncers/:syncerName" render={(props) => renderLoginIfNotLoggedIn(<SyncerEditPage account={account} {...props} />)} />
+        <Route exact path="/syncers/:organizationName/:syncerName" render={(props) => renderLoginIfNotLoggedIn(<SyncerEditPage account={account} {...props} />)} />
         <Route exact path="/transactions" render={(props) => renderLoginIfNotLoggedIn(<TransactionListPage account={account} {...props} />)} />
         <Route exact path="/transactions/:organizationName/:transactionName" render={(props) => renderLoginIfNotLoggedIn(<TransactionEditPage account={account} {...props} />)} />
         <Route exact path="/webhooks" render={(props) => renderLoginIfNotLoggedIn(<WebhookListPage account={account} {...props} />)} />
+        <Route exact path="/webhook-events" render={(props) => renderLoginIfNotLoggedIn(<WebhookEventListPage account={account} {...props} />)} />
         <Route exact path="/webhooks/:webhookName" render={(props) => renderLoginIfNotLoggedIn(<WebhookEditPage account={account} {...props} />)} />
+        <Route exact path="/tickets" render={(props) => renderLoginIfNotLoggedIn(<TicketListPage account={account} {...props} />)} />
+        <Route exact path="/tickets/:organizationName/:ticketName" render={(props) => renderLoginIfNotLoggedIn(<TicketEditPage account={account} {...props} />)} />
         <Route exact path="/ldap/:organizationName/:ldapId" render={(props) => renderLoginIfNotLoggedIn(<LdapEditPage account={account} {...props} />)} />
         <Route exact path="/ldap/sync/:organizationName/:ldapId" render={(props) => renderLoginIfNotLoggedIn(<LdapSyncPage account={account} {...props} />)} />
         <Route exact path="/mfa/setup" render={(props) => renderLoginIfNotLoggedIn(<MfaSetupPage account={account} onfinish={onfinish} {...props} />)} />
@@ -468,52 +619,113 @@ function ManagementPage(props) {
     setMenuVisible(true);
   };
 
+  const siderWidth = 256;
+  const siderCollapsedWidth = 80;
+  const showSider = !Setting.isMobile() && !props.requiredEnableMfa;
+  const contentMarginLeft = showSider ? (siderCollapsed ? siderCollapsedWidth : siderWidth) : 0;
+
   return (
     <React.Fragment>
       <EnableMfaNotification account={props.account} />
-      <Header style={{display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0", marginBottom: "4px", backgroundColor: props.themeAlgorithm.includes("dark") ? "black" : "white"}} >
-        {
-          props.requiredEnableMfa || (Setting.isMobile() ? (
-            <React.Fragment>
-              <Drawer title={i18next.t("general:Close")} placement="left" open={menuVisible} onClose={onClose}>
-                <Menu
-                  items={getMenuItems()}
-                  mode={"inline"}
-                  selectedKeys={[props.selectedMenuKey]}
-                  style={{lineHeight: "64px"}}
-                  onClick={onClose}
-                >
-                </Menu>
-              </Drawer>
-              <Button icon={<BarsOutlined />} onClick={showMenu} type="text">
-                {i18next.t("general:Menu")}
-              </Button>
-            </React.Fragment>
-          ) : (
-            // Padding 1px for Menu Item Highlight border
-            <div style={{flex: 1, overflow: "hidden", paddingBottom: "1px"}}>
-              <Menu
-                onClick={onClose}
-                items={getMenuItems()}
-                mode={"horizontal"}
-                selectedKeys={[props.selectedMenuKey]}
-                style={{backgroundColor: props.themeAlgorithm.includes("dark") ? "black" : "white"}}
+      {showSider && (
+        <Sider
+          collapsed={siderCollapsed}
+          collapsedWidth={siderCollapsedWidth}
+          width={siderWidth}
+          trigger={null}
+          theme={isDark ? "dark" : "light"}
+          style={{
+            height: "100vh",
+            position: "fixed",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 100,
+            boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div style={{
+            height: 52,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: siderCollapsed ? "center" : "flex-start",
+            padding: siderCollapsed ? "0" : "0 16px 0 24px",
+            overflow: "hidden",
+          }}>
+            <Link to="/">
+              <img
+                src={siderCollapsed ? (organization?.favicon || siderLogo || props.logo) : (siderLogo ?? props.logo)}
+                alt="logo"
+                style={{
+                  height: siderCollapsed ? 28 : 40,
+                  width: siderCollapsed ? 28 : undefined,
+                  maxWidth: siderCollapsed ? 28 : 160,
+                  objectFit: "contain",
+                  borderRadius: siderCollapsed ? 4 : 0,
+                  transition: "max-width 0.2s, height 0.2s, width 0.2s",
+                }}
               />
-            </div>
-          ))
-        }
-        <div style={{flexShrink: 0}}>
-          {renderAccountMenu()}
-        </div>
-      </Header>
-      <Content style={{display: "flex", flexDirection: "column"}} >
-        {isWithoutCard() ?
-          renderRouter() :
-          <Card className="content-warp-card">
-            {renderRouter()}
-          </Card>
-        }
-      </Content>
+            </Link>
+          </div>
+          <div className="sider-menu-container" style={{flex: 1, overflow: "auto"}}>
+            <Menu
+              mode="inline"
+              items={getMenuItems()}
+              selectedKeys={[selectedLeafKey]}
+              openKeys={menuOpenKeys}
+              onOpenChange={setMenuOpenKeys}
+              theme={isDark ? "dark" : "light"}
+              style={{borderRight: 0}}
+            />
+          </div>
+        </Sider>
+      )}
+      <div style={{marginLeft: contentMarginLeft, transition: "margin-left 0.2s", display: "flex", flexDirection: "column", flex: 1}}>
+        <Header style={{display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0", marginBottom: "4px", backgroundColor: isDark ? "black" : "white", color: textColor, position: "sticky", top: 0, zIndex: 99, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", height: "52px", lineHeight: "52px"}}>
+          <div style={{display: "flex", alignItems: "center"}}>
+            {props.requiredEnableMfa ? null : (Setting.isMobile() ? (
+              <React.Fragment>
+                <Drawer title={i18next.t("general:Close")} placement="left" open={menuVisible} onClose={onClose}>
+                  <Menu
+                    items={getMenuItems()}
+                    mode={"inline"}
+                    selectedKeys={[selectedLeafKey]}
+                    openKeys={menuOpenKeys}
+                    onOpenChange={setMenuOpenKeys}
+                    style={{lineHeight: "48px"}}
+                    onClick={onClose}
+                  />
+                </Drawer>
+                <Button icon={<BarsOutlined />} onClick={showMenu} type="text">
+                  {i18next.t("general:Menu")}
+                </Button>
+              </React.Fragment>
+            ) : (
+              <Button
+                icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={toggleSider}
+                type="text"
+                style={{fontSize: 16, width: 40, height: 40, color: textColor}}
+              />
+            ))}
+            <BreadcrumbBar uri={currentUri} />
+          </div>
+          <div style={{flexShrink: 0, display: "flex", alignItems: "center"}}>
+            {renderAccountMenu()}
+          </div>
+        </Header>
+        <Content style={{display: "flex", flexDirection: "column"}}>
+          {isWithoutCard() ?
+            renderRouter() :
+            <Card className="content-warp-card" styles={{body: {padding: 0, margin: 0}}}>
+              {renderRouter()}
+            </Card>
+          }
+        </Content>
+      </div>
     </React.Fragment>
   );
 }

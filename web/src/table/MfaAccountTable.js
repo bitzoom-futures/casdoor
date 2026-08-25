@@ -80,13 +80,13 @@ class MfaAccountTable extends React.Component {
   renderTable(table) {
     const columns = [
       {
-        title: i18next.t("forget:Account"),
+        title: i18next.t("cert:Account"),
         dataIndex: "accountName",
         key: "accountName",
         width: "400px",
         render: (text, record, index) => {
           return (
-            <Input value={text} onChange={e => {
+            <Input size="small" value={text} onChange={e => {
               this.updateField(table, index, "accountName", e.target.value);
             }} />
           );
@@ -99,7 +99,7 @@ class MfaAccountTable extends React.Component {
         width: "300px",
         render: (text, record, index) => {
           return (
-            <Input value={text} onChange={e => {
+            <Input size="small" value={text} onChange={e => {
               this.updateField(table, index, "issuer", e.target.value);
             }} />
           );
@@ -111,7 +111,7 @@ class MfaAccountTable extends React.Component {
         key: "origin",
         render: (text, record, index) => {
           return (
-            <Input value={text} onChange={e => {
+            <Input size="small" value={text} onChange={e => {
               this.updateField(table, index, "origin", e.target.value);
             }} />
           );
@@ -123,7 +123,7 @@ class MfaAccountTable extends React.Component {
         key: "secretKey",
         render: (text, record, index) => {
           return (
-            <Input.Password value={text} onChange={e => {
+            <Input.Password size="small" value={text} onChange={e => {
               this.updateField(table, index, "secretKey", e.target.value);
             }} />
           );
@@ -179,7 +179,7 @@ class MfaAccountTable extends React.Component {
               overlayInnerStyle={{padding: 0}}
               content={<CasdoorAppQrCode accessToken={this.props.accessToken} icon={this.state.icon} />}
             >
-              <Button style={{marginRight: "10px"}} type="primary" size="small">
+              <Button style={{marginRight: "10px"}} size="small">
                 {i18next.t("general:QR Code")}
               </Button>
             </Popover>
@@ -187,7 +187,7 @@ class MfaAccountTable extends React.Component {
               trigger="click"
               content={<CasdoorAppUrl accessToken={this.props.accessToken} />}
             >
-              <Button type="primary" size="small">
+              <Button size="small">
                 {i18next.t("general:URL")}
               </Button>
             </Popover>

@@ -13,11 +13,13 @@
 // limitations under the License.
 
 import React from "react";
-import {Button, Card, Col, Input, Row, Select, Switch} from "antd";
+import Loading from "./common/Loading";
+import {Button, Card, Col, Input, InputNumber, Row, Select, Switch} from "antd";
 import * as GroupBackend from "./backend/GroupBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
 import * as Setting from "./Setting";
 import i18next from "i18next";
+import PropertyTable from "./table/propertyTable";
 
 class GroupEditPage extends React.Component {
   constructor(props) {
@@ -41,6 +43,14 @@ class GroupEditPage extends React.Component {
   }
 
   getGroup() {
+    if (this.state.mode === "add" && this.props.location.group) {
+      const group = this.props.location.group;
+      this.setState({
+        group: group,
+      });
+      return;
+    }
+
     GroupBackend.getGroup(this.state.organizationName, this.state.groupName)
       .then((res) => {
         if (res.status === "ok") {
@@ -188,6 +198,16 @@ class GroupEditPage extends React.Component {
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("general:GID number"), i18next.t("general:GID number - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <InputNumber min={0} value={this.state.group.gidNumber} onChange={value => {
+              this.updateGroupField("gidNumber", value ?? 0);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
             {Setting.getLabel(i18next.t("general:Is enabled"), i18next.t("general:Is enabled - Tooltip"))} :
           </Col>
@@ -195,6 +215,17 @@ class GroupEditPage extends React.Component {
             <Switch checked={this.state.group.isEnabled} onChange={checked => {
               this.updateGroupField("isEnabled", checked);
             }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("user:Properties"), i18next.t("user:Properties - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <PropertyTable
+              properties={this.state.group.properties === null || this.state.group.properties === undefined ? {} : this.state.group.properties}
+              onUpdateTable={(value) => {this.updateGroupField("properties", value);}}
+            />
           </Col>
         </Row>
       </Card>
@@ -205,12 +236,18 @@ class GroupEditPage extends React.Component {
     const group = Setting.deepCopy(this.state.group);
     group["isTopGroup"] = this.state.organizations.some((organization) => organization.name === group.parentId);
 
-    GroupBackend.updateGroup(this.state.organizationName, this.state.groupName, group)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? GroupBackend.addGroup(group)
+      : GroupBackend.updateGroup(this.state.organizationName, this.state.groupName, group);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.group.owner,
             groupName: this.state.group.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -226,7 +263,9 @@ class GroupEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateGroupField("name", this.state.groupName);
+          if (!isAdd) {
+            this.updateGroupField("name", this.state.groupName);
+          }
         }
       })
       .catch(error => {
@@ -235,32 +274,22 @@ class GroupEditPage extends React.Component {
   }
 
   deleteGroup() {
-    GroupBackend.deleteGroup(this.state.group)
-      .then((res) => {
-        if (res.status === "ok") {
-          const groupTreeUrl = sessionStorage.getItem("groupTreeUrl");
-          if (groupTreeUrl !== null) {
-            sessionStorage.removeItem("groupTreeUrl");
-            this.props.history.push(groupTreeUrl);
-          } else {
-            this.props.history.push("/groups");
-          }
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    const groupTreeUrl = sessionStorage.getItem("groupTreeUrl");
+    if (groupTreeUrl !== null) {
+      sessionStorage.removeItem("groupTreeUrl");
+      this.props.history.push(groupTreeUrl);
+    } else {
+      this.props.history.push("/groups");
+    }
   }
 
   render() {
     return (
       <div>
         {
-          this.state.group !== null ? this.renderGroup() : null
+          this.state.group !== null ? this.renderGroup() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitGroupEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitGroupEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteGroup()}>{i18next.t("general:Cancel")}</Button> : null}

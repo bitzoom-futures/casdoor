@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, Row, Select} from "antd";
 import * as ModelBackend from "./backend/ModelBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
@@ -42,6 +43,14 @@ class ModelEditPage extends React.Component {
   }
 
   getModel() {
+    if (this.state.mode === "add" && this.props.location.model) {
+      const model = this.props.location.model;
+      this.setState({
+        model: model,
+      });
+      return;
+    }
+
     ModelBackend.getModel(this.state.organizationName, this.state.modelName)
       .then((res) => {
         if (res.data === null) {
@@ -157,12 +166,18 @@ class ModelEditPage extends React.Component {
 
   submitModelEdit(exitAfterSave) {
     const model = Setting.deepCopy(this.state.model);
-    ModelBackend.updateModel(this.state.organizationName, this.state.modelName, model)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? ModelBackend.addModel(model)
+      : ModelBackend.updateModel(this.state.organizationName, this.state.modelName, model);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.model.owner,
             modelName: this.state.model.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -172,7 +187,9 @@ class ModelEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateModelField("name", this.state.modelName);
+          if (!isAdd) {
+            this.updateModelField("name", this.state.modelName);
+          }
         }
       })
       .catch(error => {
@@ -181,26 +198,16 @@ class ModelEditPage extends React.Component {
   }
 
   deleteModel() {
-    ModelBackend.deleteModel(this.state.model)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/models");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/models");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.model !== null ? this.renderModel() : null
+          this.state.model !== null ? this.renderModel() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitModelEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitModelEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteModel()}>{i18next.t("general:Cancel")}</Button> : null}

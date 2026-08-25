@@ -15,11 +15,13 @@
 package controllers
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	"github.com/beego/beego"
-	"github.com/beego/beego/logs"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web"
+	"github.com/casdoor/casdoor/mcpself"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
 )
@@ -27,7 +29,7 @@ import (
 // ApiController
 // controller for handlers under /api uri
 type ApiController struct {
-	beego.Controller
+	web.Controller
 }
 
 // RootController
@@ -71,6 +73,23 @@ func (c *ApiController) IsAdminOrSelf(user2 *object.User) bool {
 	return false
 }
 
+// requireOrganizationPermission checks that the current user may create an object belonging
+// to the given organization. Global admins can use any organization, other admins are
+// restricted to their own one. It responds with an error and returns false when not allowed.
+func (c *ApiController) requireOrganizationPermission(organization string) bool {
+	isGlobalAdmin, user := c.isGlobalAdmin()
+	if isGlobalAdmin {
+		return true
+	}
+
+	if user == nil || user.Owner != organization {
+		c.ResponseError(c.T("auth:Unauthorized operation"))
+		return false
+	}
+
+	return true
+}
+
 func (c *ApiController) isGlobalAdmin() (bool, *object.User) {
 	username := c.GetSessionUsername()
 	if object.IsAppUser(username) {
@@ -104,6 +123,13 @@ func (c *ApiController) getCurrentUser() *object.User {
 
 // GetSessionUsername ...
 func (c *ApiController) GetSessionUsername() string {
+	// prefer username stored in Beego context by ApiFilter
+	if ctxUser := c.Ctx.Input.GetData("currentUserId"); ctxUser != nil {
+		if username, ok := ctxUser.(string); ok {
+			return username
+		}
+	}
+
 	// check if user session expired
 	sessionData := c.GetSessionData()
 
@@ -115,6 +141,26 @@ func (c *ApiController) GetSessionUsername() string {
 	}
 
 	user := c.GetSession("username")
+	if user == nil {
+		return ""
+	}
+
+	return user.(string)
+}
+
+// GetPaidUsername ...
+func (c *ApiController) GetPaidUsername() string {
+	// check if user session expired
+	sessionData := c.GetSessionData()
+
+	if sessionData != nil &&
+		sessionData.ExpireTime != 0 &&
+		sessionData.ExpireTime < time.Now().Unix() {
+		c.ClearUserSession()
+		return ""
+	}
+
+	user := c.GetSession("paidUsername")
 	if user == nil {
 		return ""
 	}
@@ -148,6 +194,7 @@ func (c *ApiController) GetSessionApplication() *object.Application {
 func (c *ApiController) ClearUserSession() {
 	c.SetSessionUsername("")
 	c.SetSessionData(nil)
+	_ = c.SessionRegenerateID()
 }
 
 func (c *ApiController) ClearTokenSession() {
@@ -216,16 +263,19 @@ func (c *ApiController) setMfaUserSession(userId string) {
 }
 
 func (c *ApiController) getMfaUserSession() string {
-	userId := c.Ctx.Input.CruSession.Get(object.MfaSessionUserId)
+	userId := c.Ctx.Input.CruSession.Get(context.Background(), object.MfaSessionUserId)
 	if userId == nil {
 		return ""
 	}
 	return userId.(string)
 }
 
-func (c *ApiController) setExpireForSession() {
+func (c *ApiController) setExpireForSession(cookieExpireInHours int64) {
 	timestamp := time.Now().Unix()
-	timestamp += 3600 * 24
+	if cookieExpireInHours == 0 {
+		cookieExpireInHours = 720
+	}
+	timestamp += 3600 * cookieExpireInHours
 	c.SetSessionData(&SessionData{
 		ExpireTime: timestamp,
 	})
@@ -258,4 +308,15 @@ func (c *ApiController) Finish() {
 		}
 	}
 	c.Controller.Finish()
+}
+
+func (c *ApiController) McpResponseError(id interface{}, code int, message string, data interface{}) {
+	resp := mcpself.BuildMcpResponse(id, nil, &mcpself.McpError{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	})
+	c.Ctx.Output.Header("Content-Type", "application/json")
+	c.Data["json"] = resp
+	c.ServeJSON()
 }

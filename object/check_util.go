@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/casdoor/casdoor/i18n"
+	"github.com/casdoor/casdoor/util"
 )
 
 var reRealName *regexp.Regexp
@@ -45,6 +46,23 @@ func resetUserSigninErrorTimes(user *User) error {
 
 	user.SigninWrongTimes = 0
 	_, err := UpdateUser(user.GetId(), user, []string{"signin_wrong_times", "last_signin_wrong_time"}, false)
+	return err
+}
+
+// RecordUserSignin records the last successful signin time and IP of the user.
+// It must be called after the token has been generated, so that the
+// "last_signin_time" / "last_signin_ip" claims in the token still hold the
+// previous signin rather than the current one (the current signin time is
+// always available in the token's "iat" claim).
+// See https://github.com/casdoor/casdoor/issues/5646 and
+// https://github.com/casdoor/casdoor/issues/5651
+func RecordUserSignin(user *User, clientIp string) error {
+	user.LastSigninTime = util.GetCurrentTime()
+	if clientIp != "" {
+		user.LastSigninIp = clientIp
+	}
+
+	_, err := UpdateUser(user.GetId(), user, []string{"last_signin_time", "last_signin_ip"}, false)
 	return err
 }
 
@@ -81,14 +99,12 @@ func recordSigninErrorInfo(user *User, lang string, options ...bool) error {
 		return errSignin
 	}
 
-	// increase failed login count
+	// increase failed login count, and record the lockout time only when first reaching the limit
 	if user.SigninWrongTimes < failedSigninLimit {
 		user.SigninWrongTimes++
-	}
-
-	if user.SigninWrongTimes >= failedSigninLimit {
-		// record the latest failed login time
-		user.LastSigninWrongTime = time.Now().UTC().Format(time.RFC3339)
+		if user.SigninWrongTimes >= failedSigninLimit {
+			user.LastSigninWrongTime = time.Now().UTC().Format(time.RFC3339)
+		}
 	}
 
 	// update user
@@ -99,11 +115,11 @@ func recordSigninErrorInfo(user *User, lang string, options ...bool) error {
 
 	leftChances := failedSigninLimit - user.SigninWrongTimes
 	if leftChances == 0 && enableCaptcha {
-		return fmt.Errorf(i18n.Translate(lang, "check:password or code is incorrect"))
+		return newSigninError(SigninReasonWrongPassword, i18n.Translate(lang, "check:password or code is incorrect"))
 	} else if leftChances >= 0 {
-		return fmt.Errorf(i18n.Translate(lang, "check:password or code is incorrect, you have %s remaining chances"), strconv.Itoa(leftChances))
+		return newSigninError(SigninReasonWrongPassword, fmt.Sprintf(i18n.Translate(lang, "check:password or code is incorrect, you have %s remaining chances"), strconv.Itoa(leftChances)))
 	}
 
 	// don't show the chance error message if the user has no chance left
-	return fmt.Errorf(i18n.Translate(lang, "check:You have entered the wrong password or code too many times, please wait for %d minutes and try again"), failedSigninFrozenTime)
+	return newSigninError(SigninReasonAccountFrozen, fmt.Sprintf(i18n.Translate(lang, "check:You have entered the wrong password or code too many times, please wait for %d minutes and try again"), failedSigninFrozenTime))
 }

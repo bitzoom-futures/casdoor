@@ -54,18 +54,7 @@ class CertListPage extends BaseListPage {
 
   addCert() {
     const newCert = this.newCert();
-    CertBackend.addCert(newCert)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/certs/${newCert.owner}/${newCert.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/certs/${newCert.owner}/${newCert.name}`, mode: "add", cert: newCert});
   }
 
   deleteCert(i) {
@@ -85,6 +74,28 @@ class CertListPage extends BaseListPage {
       })
       .catch(error => {
         Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
+      });
+  }
+
+  refreshCert(i) {
+    const cert = this.state.data[i];
+    CertBackend.refreshDomainExpire(cert.owner, cert.name)
+      .then((res) => {
+        if (res.status === "error") {
+          Setting.showMessage("error", `Failed to refresh domain expire: ${res.msg}`);
+        } else {
+          Setting.showMessage("success", "Domain expire refreshed successfully");
+          this.fetch({
+            pagination: {
+              ...this.state.pagination,
+              current: this.state.pagination.current > 1 && this.state.data.length === 1 ? this.state.pagination.current - 1 : this.state.pagination.current,
+            },
+          });
+        }
+      }
+      )
+      .catch(error => {
+        Setting.showMessage("error", `Domain expire failed to refresh: ${error}`);
       });
   }
 
@@ -147,7 +158,7 @@ class CertListPage extends BaseListPage {
         sorter: true,
       },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "type",
         key: "type",
         filterMultiple: false,
@@ -194,6 +205,12 @@ class CertListPage extends BaseListPage {
         render: (text, record, index) => {
           return (
             <div>
+              {
+                record.type === "SSL" ? (
+                  <Button disabled={!Setting.isAdminUser(this.props.account) && (record.owner !== this.props.account.owner)} style={{margin: "10px 10px 10px 0"}} type="default" onClick={() => this.refreshCert(index)}>{i18next.t("general:Refresh")}
+                  </Button>
+                ) : null
+              }
               <Button disabled={!Setting.isAdminUser(this.props.account) && (record.owner !== this.props.account.owner)} style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push(`/certs/${record.owner}/${record.name}`)}>{i18next.t("general:Edit")}</Button>
               <PopconfirmModal
                 disabled={!Setting.isAdminUser(this.props.account) && (record.owner !== this.props.account.owner)}
@@ -216,14 +233,14 @@ class CertListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={certs} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={certs} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Certs")}&nbsp;&nbsp;&nbsp;&nbsp;
               <Button type="primary" size="small" onClick={this.addCert.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

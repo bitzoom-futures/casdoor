@@ -14,13 +14,18 @@
 
 import * as faceapi from "face-api.js";
 import React, {useState} from "react";
-import {Button, Modal, Progress, Space, Spin, message} from "antd";
+import {Button, Modal, Progress, Space, message} from "antd";
+import Loading from "../Loading";
 import i18next from "i18next";
 import Dragger from "antd/es/upload/Dragger";
 import * as Setting from "../../Setting";
 
+// This modal has three modes controlled by props:
+//   withImage=false            → camera mode: captures face descriptor array (faceIdData) for recognition login
+//   withImage=true             → image-upload mode: user drags/drops a photo; camera is skipped
+//   withImage=true captureImage=true → camera-capture mode: captures a JPEG image URL for image-based enrollment
 const FaceRecognitionModal = (props) => {
-  const {visible, onOk, onCancel, withImage} = props;
+  const {visible, onOk, onCancel, withImage, captureImage} = props;
   const [modelsLoaded, setModelsLoaded] = React.useState(false);
   const [isCameraCaptured, setIsCameraCaptured] = useState(false);
 
@@ -35,6 +40,10 @@ const FaceRecognitionModal = (props) => {
   const [currentFaceIndex, setCurrentFaceIndex] = React.useState();
 
   React.useEffect(() => {
+    if (!visible || modelsLoaded) {
+      return;
+    }
+
     const loadModels = async() => {
       // const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
       const MODEL_URL = `${Setting.StaticBaseUrl}/casdoor/models`;
@@ -51,10 +60,10 @@ const FaceRecognitionModal = (props) => {
       });
     };
     loadModels();
-  }, []);
+  }, [visible, modelsLoaded]);
 
   React.useEffect(() => {
-    if (withImage) {
+    if (withImage && !captureImage) {
       return;
     }
     if (visible) {
@@ -82,7 +91,7 @@ const FaceRecognitionModal = (props) => {
   }, [visible, modelsLoaded]);
 
   React.useEffect(() => {
-    if (withImage) {
+    if (withImage && !captureImage) {
       return;
     }
     if (isCameraCaptured) {
@@ -108,7 +117,7 @@ const FaceRecognitionModal = (props) => {
   }, [isCameraCaptured]);
 
   const handleStreamVideo = () => {
-    if (withImage) {
+    if (withImage && !captureImage) {
       return;
     }
     let count = 0;
@@ -133,7 +142,16 @@ const FaceRecognitionModal = (props) => {
               goodCount++;
               if (face.detection.score > 0.99 || goodCount > 10) {
                 clearInterval(detection.current);
-                onOk(array);
+                if (captureImage) {
+                  const canvas = document.createElement("canvas");
+                  canvas.width = videoRef.current.videoWidth;
+                  canvas.height = videoRef.current.videoHeight;
+                  const context = canvas.getContext("2d");
+                  context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                  onOk(canvas.toDataURL("image/jpeg", 0.92));
+                } else {
+                  onOk(array);
+                }
               }
             }
           } else {
@@ -170,7 +188,7 @@ const FaceRecognitionModal = (props) => {
     });
   };
 
-  if (!withImage) {
+  if (!withImage || captureImage) {
     return (
       <div>
         <Modal
@@ -236,10 +254,7 @@ const FaceRecognitionModal = (props) => {
                 </div>
                 :
                 <div>
-                  <Spin tip={i18next.t("login:Loading")} size="large"
-                    style={{display: "flex", justifyContent: "center", alignContent: "center"}}>
-                    <div className="content" />
-                  </Spin>
+                  <Loading tip={i18next.t("login:Loading")} />
                 </div>
             }
           </div>
@@ -304,7 +319,7 @@ const FaceRecognitionModal = (props) => {
               if (maxScore < 0.9) {
                 message.error(i18next.t("login:Face recognition failed"));
               }
-            }}> {i18next.t("application:Generate Face ID")}</Button> : null
+            }}> {i18next.t("general:Generate")}</Button> : null
           }
         </Space>
         {

@@ -41,7 +41,7 @@ type Subscription struct {
 	Name        string `xorm:"varchar(100) notnull pk" json:"name"`
 	DisplayName string `xorm:"varchar(100)" json:"displayName"`
 	CreatedTime string `xorm:"varchar(100)" json:"createdTime"`
-	Description string `xorm:"varchar(100)" json:"description"`
+	Description string `xorm:"mediumtext" json:"description"`
 
 	User    string `xorm:"varchar(100)" json:"user"`
 	Pricing string `xorm:"varchar(100)" json:"pricing"`
@@ -215,6 +215,26 @@ func GetSubscription(id string) (*Subscription, error) {
 		return nil, err
 	}
 	return getSubscription(owner, name)
+}
+
+func HasActiveSubscriptionForPlan(owner, userName, planName string) (bool, error) {
+	subscriptions := []*Subscription{}
+	err := ormer.Engine.Find(&subscriptions, &Subscription{Owner: owner, User: userName, Plan: planName})
+	if err != nil {
+		return false, err
+	}
+
+	for _, sub := range subscriptions {
+		err = sub.UpdateState()
+		if err != nil {
+			return false, err
+		}
+		// Check if subscription is active, upcoming, or pending (not expired, error, or suspended)
+		if sub.State == SubStateActive || sub.State == SubStateUpcoming || sub.State == SubStatePending {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func UpdateSubscription(id string, subscription *Subscription) (bool, error) {

@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import React from "react";
-import {Button, Card, Col, Input, InputNumber, Popconfirm, Radio, Row, Select, Switch} from "antd";
+import Loading from "./common/Loading";
+import {AutoComplete, Button, Card, Col, Input, InputNumber, Popconfirm, Radio, Row, Select, Switch} from "antd";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
 import * as ApplicationBackend from "./backend/ApplicationBackend";
 import * as LdapBackend from "./backend/LdapBackend";
@@ -49,12 +50,32 @@ class OrganizationEditPage extends React.Component {
 
   UNSAFE_componentWillMount() {
     this.getOrganization();
+
+    // in "add" mode the organization does not exist in the DB yet, so it owns nothing
+    if (this.state.mode === "add") {
+      this.setState({ldaps: []});
+      return;
+    }
+
+    this.getRelatedResources();
+  }
+
+  getRelatedResources() {
     this.getApplications();
     this.getLdaps();
     this.getOrganizationTransactions();
   }
 
   getOrganization() {
+    if (this.state.mode === "add" && this.props.location.organization) {
+      const organization = this.props.location.organization;
+      organization["enableDarkLogo"] = !!organization["logoDark"];
+      this.setState({
+        organization: organization,
+      });
+      return;
+    }
+
     OrganizationBackend.getOrganization("admin", this.state.organizationName)
       .then((res) => {
         if (res.status === "ok") {
@@ -344,7 +365,7 @@ class OrganizationEditPage extends React.Component {
               virtual={false}
               style={{width: "100%"}}
               mode="multiple"
-              value={this.state.organization.passwordOptions}
+              value={this.state.organization.passwordOptions ?? []}
               onChange={(value => {
                 this.updateOrganizationField("passwordOptions", value);
               })}
@@ -397,6 +418,40 @@ class OrganizationEditPage extends React.Component {
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("organization:Token retention days"), i18next.t("organization:Token retention days - Tooltip"))} :
+          </Col>
+          <Col span={4} >
+            <AutoComplete
+              style={{width: "100%"}}
+              value={this.state.organization.tokenRetentionDays ? this.state.organization.tokenRetentionDays.toString() : ""}
+              options={[7, 30, 90, 180, 365].map(days => ({value: days.toString(), label: `${days} ${i18next.t("organization:days")}`}))}
+              filterOption={(inputValue, option) => option.value.startsWith(inputValue)}
+              onChange={value => {
+                const digits = (value || "").replace(/\D/g, "");
+                this.updateOrganizationField("tokenRetentionDays", digits === "" ? 0 : Number(digits));
+              }}
+            />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("organization:Record retention days"), i18next.t("organization:Record retention days - Tooltip"))} :
+          </Col>
+          <Col span={4} >
+            <AutoComplete
+              style={{width: "100%"}}
+              value={this.state.organization.recordRetentionDays ? this.state.organization.recordRetentionDays.toString() : ""}
+              options={[7, 30, 90, 180, 365].map(days => ({value: days.toString(), label: `${days} ${i18next.t("organization:days")}`}))}
+              filterOption={(inputValue, option) => option.value.startsWith(inputValue)}
+              onChange={value => {
+                const digits = (value || "").replace(/\D/g, "");
+                this.updateOrganizationField("recordRetentionDays", digits === "" ? 0 : Number(digits));
+              }}
+            />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
             {Setting.getLabel(i18next.t("general:Supported country codes"), i18next.t("general:Supported country codes - Tooltip"))} :
           </Col>
@@ -407,7 +462,7 @@ class OrganizationEditPage extends React.Component {
               }}
               filterOption={(input, option) => (option?.text ?? "").toLowerCase().includes(input.toLowerCase())}
             >
-              {Setting.getCountryCodeOption({name: i18next.t("organization:All"), code: "All", phone: 0})}
+              {Setting.getCountryCodeOption({name: i18next.t("general:All"), code: "All", phone: 0})}
               {
                 Setting.getCountryCodeData().map((country) => Setting.getCountryCodeOption(country))
               }
@@ -469,6 +524,16 @@ class OrganizationEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Default token format"), i18next.t("organization:Default token format - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Select virtual={false} style={{width: "100%"}} value={!this.state.organization.defaultTokenFormat ? "JWT" : this.state.organization.defaultTokenFormat} onChange={(value => {this.updateOrganizationField("defaultTokenFormat", value);})}
+              options={["JWT", "JWT-Empty", "JWT-Custom", "JWT-Standard"].map((item) => Setting.getOption(item, item))
+              } />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
             {Setting.getLabel(i18next.t("organization:User types"), i18next.t("organization:User types - Tooltip"))} :
           </Col>
           <Col span={22} >
@@ -481,7 +546,7 @@ class OrganizationEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("organization:Tags"), i18next.t("organization:Tags - Tooltip"))} :
+            {Setting.getLabel(i18next.t("organization:Tags"), i18next.t("application:Tags - Tooltip"))} :
           </Col>
           <Col span={22} >
             <Select virtual={false} mode="tags" style={{width: "100%"}} value={this.state.organization.tags} onChange={(value => {this.updateOrganizationField("tags", value);})}>
@@ -561,6 +626,30 @@ class OrganizationEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("organization:Balance credit"), i18next.t("organization:Balance credit - Tooltip"))} :
+          </Col>
+          <Col span={4} >
+            <InputNumber value={this.state.organization.balanceCredit ?? 0} max={0} onChange={value => {
+              this.updateOrganizationField("balanceCredit", value);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("organization:Balance currency"), i18next.t("organization:Balance currency - Tooltip"))} :
+          </Col>
+          <Col span={4} >
+            <Select virtual={false} style={{width: "100%"}} value={this.state.organization.balanceCurrency || "USD"} onChange={(value => {
+              this.updateOrganizationField("balanceCurrency", value);
+            })}>
+              {
+                Setting.CurrencyOptions.map((item, index) => <Option key={index} value={item.id}>{Setting.getCurrencyWithFlag(item.id)}</Option>)
+              }
+            </Select>
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
             {Setting.getLabel(i18next.t("organization:Soft deletion"), i18next.t("organization:Soft deletion - Tooltip"))} :
           </Col>
           <Col span={1} >
@@ -610,8 +699,18 @@ class OrganizationEditPage extends React.Component {
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("organization:Use permanent avatar"), i18next.t("organization:Use permanent avatar - Tooltip"))} :
+          </Col>
+          <Col span={1} >
+            <Switch checked={this.state.organization.usePermanentAvatar} onChange={checked => {
+              this.updateOrganizationField("usePermanentAvatar", checked);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("organization:Navbar items"), i18next.t("organization:Navbar items - Tooltip"))} :
+            {Setting.getLabel(i18next.t("organization:Admin navbar items"), i18next.t("organization:Admin navbar items - Tooltip"))} :
           </Col>
           <Col span={22} >
             <NavItemTree
@@ -620,6 +719,21 @@ class OrganizationEditPage extends React.Component {
               defaultExpandedKeys={["all"]}
               onCheck={(checked, _) => {
                 this.updateOrganizationField("navItems", checked);
+              }}
+            />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:User navbar items"), i18next.t("organization:User navbar items - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <NavItemTree
+              disabled={!Setting.isAdminUser(this.props.account)}
+              checkedKeys={this.state.organization.userNavItems ?? []}
+              defaultExpandedKeys={["all"]}
+              onCheck={(checked, _) => {
+                this.updateOrganizationField("userNavItems", checked);
               }}
             />
           </Col>
@@ -636,6 +750,16 @@ class OrganizationEditPage extends React.Component {
               onCheck={(checked, _) => {
                 this.updateOrganizationField("widgetItems", checked);
               }}
+            />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Account menu"), i18next.t("organization:Account menu - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Select virtual={false} style={{width: "100%"}} value={this.state.organization.accountMenu || "Horizontal"} onChange={(value => {this.updateOrganizationField("accountMenu", value);})}
+              options={[{value: "Horizontal", label: i18next.t("application:Horizontal")}, {value: "Vertical", label: i18next.t("application:Vertical")}].map(item => Setting.getOption(item.label, item.value))}
             />
           </Col>
         </Row>
@@ -699,18 +823,100 @@ class OrganizationEditPage extends React.Component {
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}}>
-          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("general:LDAPs"), i18next.t("general:LDAPs - Tooltip"))} :
+          <Col style={{lineHeight: "32px", textAlign: "right", paddingRight: "25px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:LDAP attributes"), i18next.t("organization:LDAP attributes - Tooltip"))} :
           </Col>
           <Col span={22}>
-            <LdapTable
-              title={i18next.t("general:LDAPs")}
-              table={this.state.ldaps}
-              organizationName={this.state.organizationName}
-              onUpdateTable={(value) => {
-                this.setState({ldaps: value});
+            <Select
+              mode="multiple"
+              allowClear
+              style={{width: "100%"}}
+              value={this.state.organization.ldapAttributes ?? []}
+              onChange={(value) => {
+                this.updateOrganizationField("ldapAttributes", value);
               }}
+              options={[
+                {value: "uid", label: "uid"},
+                {value: "cn", label: "cn"},
+                {value: "mail", label: "mail"},
+                {value: "email", label: "email"},
+                {value: "mobile", label: "mobile"},
+                {value: "displayName", label: "displayName"},
+                {value: "givenName", label: "givenName"},
+                {value: "sn", label: "sn"},
+                {value: "uidNumber", label: "uidNumber"},
+                {value: "gidNumber", label: "gidNumber"},
+                {value: "homeDirectory", label: "homeDirectory"},
+                {value: "loginShell", label: "loginShell"},
+                {value: "gecos", label: "gecos"},
+                {value: "sshPublicKey", label: "sshPublicKey"},
+                {value: "memberOf", label: "memberOf"},
+                {value: "title", label: "title"},
+                {value: "userPassword", label: "userPassword"},
+                {value: "c", label: "c"},
+                {value: "co", label: "co"},
+              ]}
             />
+          </Col>
+        </Row>
+        {
+          // LDAPs belong to an existing organization, so they can only be managed after the organization is saved
+          this.state.mode === "add" ? null : (
+            <Row style={{marginTop: "20px"}}>
+              <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+                {Setting.getLabel(i18next.t("general:LDAPs"), i18next.t("general:LDAPs - Tooltip"))} :
+              </Col>
+              <Col span={22}>
+                <LdapTable
+                  title={i18next.t("general:LDAPs")}
+                  table={this.state.ldaps}
+                  organizationName={this.state.organizationName}
+                  onUpdateTable={(value) => {
+                    this.setState({ldaps: value});
+                  }}
+                />
+              </Col>
+            </Row>
+          )
+        }
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Kerberos realm"), i18next.t("organization:Kerberos realm - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Input value={this.state.organization.kerberosRealm} onChange={e => {
+              this.updateOrganizationField("kerberosRealm", e.target.value);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Kerberos KDC host"), i18next.t("organization:Kerberos KDC host - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Input value={this.state.organization.kerberosKdcHost} onChange={e => {
+              this.updateOrganizationField("kerberosKdcHost", e.target.value);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Kerberos keytab"), i18next.t("organization:Kerberos keytab - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Input.TextArea rows={4} value={this.state.organization.kerberosKeytab} onChange={e => {
+              this.updateOrganizationField("kerberosKeytab", e.target.value);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("organization:Kerberos service name"), i18next.t("organization:Kerberos service name - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <Input value={this.state.organization.kerberosServiceName} placeholder="HTTP" onChange={e => {
+              this.updateOrganizationField("kerberosServiceName", e.target.value);
+            }} />
           </Col>
         </Row>
       </Card>
@@ -727,7 +933,11 @@ class OrganizationEditPage extends React.Component {
       return;
     }
 
-    OrganizationBackend.updateOrganization(this.state.organization.owner, this.state.organizationName, organization)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? OrganizationBackend.addOrganization(organization)
+      : OrganizationBackend.updateOrganization(this.state.organization.owner, this.state.organizationName, organization);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
@@ -738,6 +948,12 @@ class OrganizationEditPage extends React.Component {
 
           this.setState({
             organizationName: this.state.organization.name,
+            mode: "edit",
+          }, () => {
+            if (isAdd) {
+              // the organization exists now, so its LDAPs and other sub-resources can be loaded
+              this.getRelatedResources();
+            }
           });
           window.dispatchEvent(new Event("storageOrganizationsChanged"));
 
@@ -748,7 +964,9 @@ class OrganizationEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateOrganizationField("name", this.state.organizationName);
+          if (!isAdd) {
+            this.updateOrganizationField("name", this.state.organizationName);
+          }
         }
       })
       .catch(error => {
@@ -757,32 +975,21 @@ class OrganizationEditPage extends React.Component {
   }
 
   deleteOrganization() {
-    OrganizationBackend.deleteOrganization(this.state.organization)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/organizations");
-          window.dispatchEvent(new Event("storageOrganizationsChanged"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/organizations");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.organization !== null ? this.renderOrganization() : null
+          this.state.organization !== null ? this.renderOrganization() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
         {this.state.mode !== "add" && this.state.transactions.length > 0 ? (
-          <Card size="small" title={i18next.t("transaction:Transactions")} style={{marginTop: "20px"}} type="inner">
-            <TransactionTable transactions={this.state.transactions} />
+          <Card size="small" title={i18next.t("general:Transactions")} style={{marginTop: "20px"}} type="inner">
+            <TransactionTable transactions={this.state.transactions} includeUser={true} />
           </Card>
         ) : null}
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitOrganizationEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitOrganizationEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteOrganization()}>{i18next.t("general:Cancel")}</Button> : null}

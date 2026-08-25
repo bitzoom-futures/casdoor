@@ -14,14 +14,16 @@
 
 import React from "react";
 import {Link} from "react-router-dom";
-import {Button, Switch, Table, Upload} from "antd";
+import {Button, Modal, Switch, Table, Upload} from "antd";
 import moment from "moment";
 import * as Setting from "./Setting";
+import * as Conf from "./Conf";
 import * as PermissionBackend from "./backend/PermissionBackend";
 import i18next from "i18next";
 import BaseListPage from "./BaseListPage";
 import PopconfirmModal from "./common/modal/PopconfirmModal";
 import {UploadOutlined} from "@ant-design/icons";
+import * as XLSX from "xlsx";
 
 class PermissionListPage extends BaseListPage {
   newPermission() {
@@ -37,7 +39,7 @@ class PermissionListPage extends BaseListPage {
       roles: [],
       domains: [],
       resourceType: "Application",
-      resources: ["app-built-in"],
+      resources: [Conf.DefaultApplication],
       actions: ["Read"],
       effect: "Allow",
       isEnabled: true,
@@ -50,18 +52,7 @@ class PermissionListPage extends BaseListPage {
 
   addPermission() {
     const newPermission = this.newPermission();
-    PermissionBackend.addPermission(newPermission)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/permissions/${newPermission.owner}/${newPermission.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/permissions/${newPermission.owner}/${newPermission.name}`, mode: "add", permission: newPermission});
   }
 
   deletePermission(i) {
@@ -85,38 +76,106 @@ class PermissionListPage extends BaseListPage {
   }
 
   uploadPermissionFile(info) {
-    const {status, response: res} = info.file;
-    if (status === "done") {
-      if (res.status === "ok") {
-        Setting.showMessage("success", "Users uploaded successfully, refreshing the page");
-
-        const {pagination} = this.state;
-        this.fetch({pagination});
-      } else {
-        Setting.showMessage("error", `${i18next.t("general:Failed to sync")}: ${res.msg}`);
-      }
+    const {status, msg} = info;
+    if (status === "ok") {
+      Setting.showMessage("success", "Permissions uploaded successfully, refreshing the page");
+      const {pagination} = this.state;
+      this.fetch({pagination});
     } else if (status === "error") {
-      Setting.showMessage("error", i18next.t("general:Failed to upload"));
+      Setting.showMessage("error", `${i18next.t("general:Failed to upload")}: ${msg}`);
     }
+    this.setState({uploadJsonData: [], uploadColumns: [], showUploadModal: false});
+  }
+
+  generateDownloadTemplate() {
+    const permissionObj = {};
+    const items = Setting.getPermissionColumns();
+    items.forEach((item) => {
+      permissionObj[item] = null;
+    });
+    const worksheet = XLSX.utils.json_to_sheet([permissionObj]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+    XLSX.writeFile(workbook, "import-permission.xlsx", {compression: true});
   }
 
   renderPermissionUpload() {
+    const uploadThis = this;
     const props = {
       name: "file",
       accept: ".xlsx",
-      method: "post",
-      action: `${Setting.ServerUrl}/api/upload-permissions`,
-      withCredentials: true,
-      onChange: (info) => {
-        this.uploadPermissionFile(info);
+      showUploadList: false,
+      beforeUpload: (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const binary = e.target.result;
+
+          try {
+            const workbook = XLSX.read(binary, {type: "array"});
+            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+              Setting.showMessage("error", i18next.t("general:No sheets found in file"));
+              return;
+            }
+
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            this.setState({uploadJsonData: jsonData, file: file});
+
+            const columns = Setting.getPermissionColumns().map(el => {
+              return {title: el.split("#")[0], dataIndex: el, key: el};
+            });
+            this.setState({uploadColumns: columns}, () => {this.setState({showUploadModal: true});});
+          } catch (err) {
+            Setting.showMessage("error", `${i18next.t("general:Failed to upload")}: ${err.message}`);
+          }
+        };
+
+        reader.onerror = (error) => {
+          Setting.showMessage("error", `${i18next.t("general:Failed to upload")}: ${error?.message || error}`);
+        };
+
+        reader.readAsArrayBuffer(file);
+        return false;
       },
     };
 
     return (
-      <Upload {...props}>
-        <Button icon={<UploadOutlined />} id="upload-button" size="small">
-          {i18next.t("user:Upload (.xlsx)")}
-        </Button></Upload>
+      <>
+        <Upload {...props}>
+          <Button icon={<UploadOutlined />} id="upload-button" size="small">
+            {i18next.t("general:Upload (.xlsx)")}
+          </Button>
+        </Upload>
+        <Modal title={i18next.t("general:Upload (.xlsx)")}
+          width={"100%"}
+          closable={true}
+          open={this.state.showUploadModal}
+          okText={i18next.t("general:Click to Upload")}
+          onOk = {() => {
+            const formData = new FormData();
+            formData.append("file", this.state.file);
+            fetch(`${Setting.ServerUrl}/api/upload-permissions`, {
+              method: "post",
+              body: formData,
+              credentials: "include",
+              headers: {
+                "Accept-Language": Setting.getAcceptLanguage(),
+              },
+            })
+              .then((res) => res.json())
+              .then((res) => {uploadThis.uploadPermissionFile(res);})
+              .catch((error) => {
+                Setting.showMessage("error", `${i18next.t("general:Failed to upload")}: ${error.message}`);
+              });
+          }}
+          cancelText={i18next.t("general:Cancel")}
+          onCancel={() => {this.setState({showUploadModal: false, uploadJsonData: [], uploadColumns: []});}}
+        >
+          <div style={{marginRight: "34px"}}>
+            <Table scroll={{x: true}} dataSource={this.state.uploadJsonData} columns={this.state.uploadColumns} />
+          </div>
+        </Modal>
+      </>
     );
   }
 
@@ -268,9 +327,9 @@ class PermissionListPage extends BaseListPage {
             case "Write":
               return i18next.t("permission:Write");
             case "Admin":
-              return i18next.t("permission:Admin");
+              return i18next.t("general:Admin");
             default:
-              return null;
+              return tag || null;
             }
           });
           return Setting.getTags(tags);
@@ -306,7 +365,7 @@ class PermissionListPage extends BaseListPage {
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -345,7 +404,7 @@ class PermissionListPage extends BaseListPage {
         dataIndex: "approveTime",
         key: "approveTime",
         filterMultiple: false,
-        width: "120px",
+        width: "130px",
         sorter: true,
         render: (text, record, index) => {
           return Setting.getFormattedDate(text);
@@ -358,7 +417,7 @@ class PermissionListPage extends BaseListPage {
         filterMultiple: false,
         filters: [
           {text: i18next.t("permission:Approved"), value: "Approved"},
-          {text: i18next.t("permission:Pending"), value: "Pending"},
+          {text: i18next.t("webhook:Pending"), value: "Pending"},
         ],
         width: "120px",
         sorter: true,
@@ -367,7 +426,7 @@ class PermissionListPage extends BaseListPage {
           case "Approved":
             return Setting.getTag("success", i18next.t("permission:Approved"));
           case "Pending":
-            return Setting.getTag("error", i18next.t("permission:Pending"));
+            return Setting.getTag("error", i18next.t("webhook:Pending"));
           default:
             return null;
           }
@@ -403,17 +462,18 @@ class PermissionListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={permissions} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={permissions} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Permissions")}&nbsp;&nbsp;&nbsp;&nbsp;
               <Button id="add-button" style={{marginRight: "15px"}} type="primary" size="small" onClick={this.addPermission.bind(this)}>{i18next.t("general:Add")}</Button>
+              <Button style={{marginRight: "15px"}} type="primary" size="small" onClick={this.generateDownloadTemplate}>{i18next.t("general:Download template")} </Button>
               {
                 this.renderPermissionUpload()
               }
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

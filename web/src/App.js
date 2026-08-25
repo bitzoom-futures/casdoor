@@ -20,15 +20,19 @@ import {setOrgIsTourVisible, setTourLogo} from "./TourConfig";
 import {StyleProvider, legacyLogicalPropertiesTransformer} from "@ant-design/cssinjs";
 import {GithubOutlined, InfoCircleFilled, ShareAltOutlined} from "@ant-design/icons";
 import {Alert, Button, ConfigProvider, Drawer, FloatButton, Layout, Result, Tooltip} from "antd";
+import {AiDots} from "./common/Loading";
 import {Route, Switch, withRouter} from "react-router-dom";
 import CustomGithubCorner from "./common/CustomGithubCorner";
+import CustomHead from "./basic/CustomHead";
 import * as Conf from "./Conf";
+import {shadcnDarkThemeComponents, shadcnDarkThemeToken, shadcnThemeComponents, shadcnThemeToken} from "./shadcnTheme";
 
 import * as Auth from "./auth/Auth";
 import EntryPage from "./EntryPage";
 import * as AuthBackend from "./auth/AuthBackend";
 import AuthCallback from "./auth/AuthCallback";
 import SamlCallback from "./auth/SamlCallback";
+import TelegramLogin from "./auth/TelegramLogin";
 import i18next from "i18next";
 import {withTranslation} from "react-i18next";
 const ManagementPage = lazy(() => import("./ManagementPage"));
@@ -38,7 +42,67 @@ import {setTwoToneColor} from "@ant-design/icons";
 import * as ApplicationBackend from "./backend/ApplicationBackend";
 import * as Cookie from "cookie";
 
+// Ant Design locale imports
+import enUS from "antd/locale/en_US";
+import zhCN from "antd/locale/zh_CN";
+import zhTW from "antd/locale/zh_TW";
+import esES from "antd/locale/es_ES";
+import frFR from "antd/locale/fr_FR";
+import deDE from "antd/locale/de_DE";
+import idID from "antd/locale/id_ID";
+import jaJP from "antd/locale/ja_JP";
+import koKR from "antd/locale/ko_KR";
+import ruRU from "antd/locale/ru_RU";
+import viVN from "antd/locale/vi_VN";
+import ptBR from "antd/locale/pt_BR";
+import itIT from "antd/locale/it_IT";
+import msMY from "antd/locale/ms_MY";
+import trTR from "antd/locale/tr_TR";
+import arEG from "antd/locale/ar_EG";
+import heIL from "antd/locale/he_IL";
+import nlNL from "antd/locale/nl_NL";
+import plPL from "antd/locale/pl_PL";
+import fiFI from "antd/locale/fi_FI";
+import svSE from "antd/locale/sv_SE";
+import ukUA from "antd/locale/uk_UA";
+import faIR from "antd/locale/fa_IR";
+import csCZ from "antd/locale/cs_CZ";
+import skSK from "antd/locale/sk_SK";
+
 setTwoToneColor("rgb(87,52,211)");
+
+function getAntdLocale(language) {
+  const localeMap = {
+    "en": enUS,
+    "zh": zhCN,
+    "zh-tw": zhTW,
+    "es": esES,
+    "fr": frFR,
+    "de": deDE,
+    "id": idID,
+    "ja": jaJP,
+    "ko": koKR,
+    "ru": ruRU,
+    "vi": viVN,
+    "pt": ptBR,
+    "it": itIT,
+    "ms": msMY,
+    "tr": trTR,
+    "ar": arEG,
+    "he": heIL,
+    "nl": nlNL,
+    "pl": plPL,
+    "fi": fiFI,
+    "sv": svSE,
+    "uk": ukUA,
+    "fa": faIR,
+    "cs": csCZ,
+    "sk": skSK,
+    "kk": ruRU, // Use Russian for Kazakh as antd doesn't have Kazakh
+    "az": trTR, // Use Turkish for Azerbaijani as they're similar
+  };
+  return localeMap[language] || enUS;
+}
 
 class App extends Component {
   constructor(props) {
@@ -64,6 +128,7 @@ class App extends Component {
       application: undefined,
     };
     Setting.initServerUrl();
+    Setting.initWebConfig();
     Auth.initAuthWithConfig({
       serverUrl: Setting.ServerUrl,
       appName: Conf.DefaultApplication, // the application used in Casdoor root path: "/"
@@ -98,24 +163,169 @@ class App extends Component {
     }
   }
 
+  shouldFlattenMenu() {
+    const organization = this.state.account?.organization;
+    const navItems = Setting.isLocalAdminUser(this.state.account) ? organization?.navItems : (organization?.userNavItems ?? []);
+
+    // If navItems is "all" or not configured, don't flatten
+    if (!Array.isArray(navItems) || navItems?.includes("all")) {
+      return false;
+    }
+
+    // Count how many valid menu items would be visible
+    // Filter out any invalid or non-existent menu items
+    const validMenuItems = [
+      "/", "/shortcuts", "/apps", // Home group
+      "/organizations", "/groups", "/users", "/invitations", // User Management
+      "/applications", "/providers", "/resources", "/certs", "/keys", // Identity
+      "/roles", "/permissions", "/models", "/adapters", "/enforcers", // Authorization
+      "/agents", "/servers", "/server-store", "/entries", "/sites", "/rules", // LLM AI
+      "/sessions", "/records", "/tokens", "/verifications", // Auditing
+      "/product-store", "/products", "/coupons", "/cart", "/orders", "/payments", "/plans", "/pricings", "/subscriptions", "/transactions", // Business
+      "/sysinfo", "/forms", "/syncers", "/webhooks", "/webhook-events", "/tickets", "/swagger", // Admin
+    ];
+
+    const count = navItems.filter(item => validMenuItems.includes(item)).length;
+    return count <= Conf.MaxItemsForFlatMenu;
+  }
+
+  getSelectedMenuKeyForFlatMenu(uri) {
+    // For flattened menu, return the actual child path instead of parent group
+    if (uri === "/" || uri.includes("/shortcuts") || uri.includes("/apps")) {
+      if (uri === "/") {
+        return "/";
+      } else if (uri.includes("/shortcuts")) {
+        return "/shortcuts";
+      } else if (uri.includes("/apps")) {
+        return "/apps";
+      }
+    } else if (uri.includes("/organizations") || uri.includes("/trees") || uri.includes("/groups") || uri.includes("/users") || uri.includes("/invitations")) {
+      if (uri.includes("/organizations")) {
+        return "/organizations";
+      } else if (uri.includes("/groups")) {
+        return "/groups";
+      } else if (uri.includes("/users")) {
+        return "/users";
+      } else if (uri.includes("/invitations")) {
+        return "/invitations";
+      }
+    } else if (uri.includes("/applications") || uri.includes("/providers") || uri.includes("/resources") || uri.includes("/certs")) {
+      if (uri.includes("/applications")) {
+        return "/applications";
+      } else if (uri.includes("/providers")) {
+        return "/providers";
+      } else if (uri.includes("/resources")) {
+        return "/resources";
+      } else if (uri.includes("/certs")) {
+        return "/certs";
+      }
+    } else if (uri.includes("/keys")) {
+      return "/keys";
+    } else if (uri.includes("/agents") || uri.includes("/servers") || uri.includes("/entries") || uri.includes("/sites") || uri.includes("/rules")) {
+      if (uri.includes("/agents")) {
+        return "/agents";
+      } else if (uri.includes("/servers")) {
+        return "/servers";
+      } else if (uri.includes("/server-store")) {
+        return "/server-store";
+      } else if (uri.includes("/entries")) {
+        return "/entries";
+      } else if (uri.includes("/sites")) {
+        return "/sites";
+      } else if (uri.includes("/rules")) {
+        return "/rules";
+      }
+    } else if (uri.includes("/roles") || uri.includes("/permissions") || uri.includes("/models") || uri.includes("/adapters") || uri.includes("/enforcers")) {
+      if (uri.includes("/roles")) {
+        return "/roles";
+      } else if (uri.includes("/permissions")) {
+        return "/permissions";
+      } else if (uri.includes("/models")) {
+        return "/models";
+      } else if (uri.includes("/adapters")) {
+        return "/adapters";
+      } else if (uri.includes("/enforcers")) {
+        return "/enforcers";
+      }
+    } else if (uri.includes("/records") || uri.includes("/tokens") || uri.includes("/sessions") || uri.includes("/verifications")) {
+      if (uri.includes("/sessions")) {
+        return "/sessions";
+      } else if (uri.includes("/records")) {
+        return "/records";
+      } else if (uri.includes("/tokens")) {
+        return "/tokens";
+      } else if (uri.includes("/verifications")) {
+        return "/verifications";
+      }
+    } else if (uri.includes("/products") || uri.includes("/orders") || uri.includes("/payments") || uri.includes("/plans") || uri.includes("/pricings") || uri.includes("/subscriptions") || uri.includes("/transactions")) {
+      if (uri.includes("/products")) {
+        return "/products";
+      } else if (uri.includes("/orders")) {
+        return "/orders";
+      } else if (uri.includes("/payments")) {
+        return "/payments";
+      } else if (uri.includes("/plans")) {
+        return "/plans";
+      } else if (uri.includes("/pricings")) {
+        return "/pricings";
+      } else if (uri.includes("/subscriptions")) {
+        return "/subscriptions";
+      } else if (uri.includes("/transactions")) {
+        return "/transactions";
+      }
+    } else if (uri.includes("/sysinfo") || uri.includes("/forms") || uri.includes("/syncers") || uri.includes("/webhooks") || uri.includes("/webhook-events") || uri.includes("/tickets")) {
+      if (uri.includes("/sysinfo")) {
+        return "/sysinfo";
+      } else if (uri.includes("/forms")) {
+        return "/forms";
+      } else if (uri.includes("/syncers")) {
+        return "/syncers";
+      } else if (uri.includes("/webhook-events")) {
+        return "/webhook-events";
+      } else if (uri.includes("/webhooks") || uri.includes("/webhook-events")) {
+        return "/webhooks";
+      } else if (uri.includes("/tickets")) {
+        return "/tickets";
+      }
+    } else if (uri.includes("/signup")) {
+      return "/signup";
+    } else if (uri.includes("/login")) {
+      return "/login";
+    } else if (uri.includes("/result")) {
+      return "/result";
+    }
+    return -1;
+  }
+
   updateMenuKey() {
     const uri = location.pathname;
     this.setState({
       uri: uri,
     });
+
+    // Check if menu should be flattened and use appropriate key selection
+    if (this.shouldFlattenMenu()) {
+      const selectedKey = this.getSelectedMenuKeyForFlatMenu(uri);
+      this.setState({selectedMenuKey: selectedKey});
+      return;
+    }
+
+    // Original logic for grouped menu
     if (uri === "/" || uri.includes("/shortcuts") || uri.includes("/apps")) {
       this.setState({selectedMenuKey: "/home"});
     } else if (uri.includes("/organizations") || uri.includes("/trees") || uri.includes("/groups") || uri.includes("/users") || uri.includes("/invitations")) {
       this.setState({selectedMenuKey: "/orgs"});
-    } else if (uri.includes("/applications") || uri.includes("/providers") || uri.includes("/resources") || uri.includes("/certs")) {
+    } else if (uri.includes("/applications") || uri.includes("/providers") || uri.includes("/resources") || uri.includes("/certs") || uri.includes("/keys")) {
       this.setState({selectedMenuKey: "/identity"});
+    } else if (uri.includes("/agents") || uri.includes("/servers") || uri.includes("/server-store") || uri.includes("/entries") || uri.includes("/sites") || uri.includes("/rules")) {
+      this.setState({selectedMenuKey: "/gateway"});
     } else if (uri.includes("/roles") || uri.includes("/permissions") || uri.includes("/models") || uri.includes("/adapters") || uri.includes("/enforcers")) {
       this.setState({selectedMenuKey: "/auth"});
-    } else if (uri.includes("/records") || uri.includes("/tokens") || uri.includes("/sessions")) {
+    } else if (uri.includes("/records") || uri.includes("/tokens") || uri.includes("/sessions") || uri.includes("/verifications")) {
       this.setState({selectedMenuKey: "/logs"});
-    } else if (uri.includes("/products") || uri.includes("/payments") || uri.includes("/plans") || uri.includes("/pricings") || uri.includes("/subscriptions")) {
+    } else if (uri.includes("/product-store") || uri.includes("/products") || uri.includes("/orders") || uri.includes("/payments") || uri.includes("/plans") || uri.includes("/pricings") || uri.includes("/subscriptions") || uri.includes("/transactions")) {
       this.setState({selectedMenuKey: "/business"});
-    } else if (uri.includes("/sysinfo") || uri.includes("/forms") || uri.includes("/syncers") || uri.includes("/webhooks")) {
+    } else if (uri.includes("/sysinfo") || uri.includes("/forms") || uri.includes("/syncers") || uri.includes("/webhooks") || uri.includes("/webhook-events") || uri.includes("/tickets")) {
       this.setState({selectedMenuKey: "/admin"});
     } else if (uri.includes("/signup")) {
       this.setState({selectedMenuKey: "/signup"});
@@ -170,6 +380,10 @@ class App extends Component {
   }
 
   setLanguage(account) {
+    if (Conf.ForceLanguage !== "") {
+      return;
+    }
+
     const language = account?.language;
     if (language !== null && language !== "" && language !== i18next.language) {
       Setting.setLanguage(language);
@@ -235,7 +449,17 @@ class App extends Component {
     }
 
     if (query !== "") {
-      window.history.replaceState({}, document.title, this.getUrlWithoutQuery());
+      const returnUrl = params.get("returnUrl");
+
+      let newUrl;
+      if (returnUrl) {
+        const newParams = new URLSearchParams();
+        newParams.set("returnUrl", returnUrl);
+        newUrl = window.location.pathname + "?" + newParams.toString();
+      } else {
+        newUrl = this.getUrlWithoutQuery();
+      }
+      window.history.replaceState({}, document.title, newUrl);
     }
 
     AuthBackend.getAccount(query)
@@ -292,7 +516,7 @@ class App extends Component {
               : (
                 Conf.CustomFooter !== null ? Conf.CustomFooter : (
                   <React.Fragment>
-                  Powered by <a target="_blank" href="https://casdoor.org" rel="noreferrer"><img style={{paddingBottom: "3px"}} height={"20px"} alt={"Casdoor"} src={logo} /></a>
+                    Powered by <a target="_blank" href="https://casdoor.org" rel="noreferrer"><img style={{paddingBottom: "3px"}} height={"20px"} alt={"Casdoor"} src={logo} /></a>
                   </React.Fragment>
                 )
               )
@@ -337,20 +561,23 @@ class App extends Component {
   }
 
   isDoorPages() {
-    return this.isEntryPages() || window.location.pathname.startsWith("/callback");
+    return this.isEntryPages() ||
+      window.location.pathname.startsWith("/callback") ||
+      window.location.pathname.startsWith("/telegram-login");
   }
 
   isEntryPages() {
     return window.location.pathname.startsWith("/signup") ||
-        window.location.pathname.startsWith("/login") ||
-        window.location.pathname.startsWith("/forget") ||
-        window.location.pathname.startsWith("/prompt") ||
-        window.location.pathname.startsWith("/result") ||
-        window.location.pathname.startsWith("/cas") ||
-        window.location.pathname.startsWith("/select-plan") ||
-        window.location.pathname.startsWith("/buy-plan") ||
-        window.location.pathname.startsWith("/qrcode") ||
-        window.location.pathname.startsWith("/captcha");
+      window.location.pathname.startsWith("/login") ||
+      window.location.pathname.startsWith("/forget") ||
+      window.location.pathname.startsWith("/prompt") ||
+      window.location.pathname.startsWith("/result") ||
+      window.location.pathname.startsWith("/cas") ||
+      window.location.pathname.startsWith("/select-plan") ||
+      window.location.pathname.startsWith("/buy-plan") ||
+      window.location.pathname.startsWith("/qrcode") ||
+      window.location.pathname.startsWith("/consent") ||
+      window.location.pathname.startsWith("/captcha");
   }
 
   onClick = ({key}) => {
@@ -390,15 +617,21 @@ class App extends Component {
       }
 
       return (
-        <ConfigProvider theme={{
-          token: {
-            colorPrimary: themeData.colorPrimary,
-            borderRadius: themeData.borderRadius,
-          },
-          algorithm: Setting.getAlgorithm(this.state.themeAlgorithm),
-        }}>
+        <ConfigProvider
+          locale={getAntdLocale(Setting.getLanguage())}
+          spin={{indicator: <AiDots />}}
+          theme={{
+            token: {
+              ...(Setting.isDarkTheme(this.state.themeAlgorithm) ? shadcnDarkThemeToken : shadcnThemeToken),
+              colorPrimary: themeData.colorPrimary,
+              borderRadius: themeData.borderRadius,
+            },
+            components: Setting.isDarkTheme(this.state.themeAlgorithm) ? shadcnDarkThemeComponents : shadcnThemeComponents,
+            algorithm: Setting.getAlgorithm(this.state.themeAlgorithm),
+          }}>
           <StyleProvider hashPriority="high" transformers={[legacyLogicalPropertiesTransformer]}>
             <Layout id="parent-area">
+              <CustomHead id="page" headerHtml={this.state.application?.pageHtml} />
               <Content style={{display: "flex", justifyContent: "center"}}>
                 {
                   this.isEntryPages() ?
@@ -420,6 +653,7 @@ class App extends Component {
                     <Switch>
                       <Route exact path="/callback" render={(props) => <AuthCallback {...props} {...this.props} application={this.state.application} onLoginSuccess={(redirectUrl) => {this.onLoginSuccess(redirectUrl);}} />} />
                       <Route exact path="/callback/saml" render={(props) => <SamlCallback {...props} {...this.props} application={this.state.application} onLoginSuccess={(redirectUrl) => {this.onLoginSuccess(redirectUrl);}} />} />
+                      <Route exact path="/telegram-login" render={(props) => <TelegramLogin {...props} {...this.props} />} />
                       <Route path="" render={() => <Result status="404" title="404 NOT FOUND" subTitle={i18next.t("general:Sorry, the page you visited does not exist.")}
                         extra={<a href="/"><Button type="primary">{i18next.t("general:Back Home")}</Button></a>} />} />
                     </Switch>
@@ -457,7 +691,7 @@ class App extends Component {
                 menuVisible={this.state.menuVisible}
                 logo={this.state.logo}
                 onChangeTheme={this.setTheme}
-                onClick = {this.onClick}
+                onClick={this.onClick}
                 onfinish={() => {
                   this.setState({requiredEnableMfa: false});
                 }}
@@ -530,14 +764,19 @@ class App extends Component {
             <link rel="icon" href={this.state.account.organization?.favicon} />
           </Helmet>
         }
-        <ConfigProvider theme={{
-          token: {
-            colorPrimary: this.state.themeData.colorPrimary,
-            colorInfo: this.state.themeData.colorPrimary,
-            borderRadius: this.state.themeData.borderRadius,
-          },
-          algorithm: Setting.getAlgorithm(this.state.themeAlgorithm),
-        }}>
+        <ConfigProvider
+          locale={getAntdLocale(Setting.getLanguage())}
+          spin={{indicator: <AiDots />}}
+          theme={{
+            token: {
+              ...(Setting.isDarkTheme(this.state.themeAlgorithm) ? shadcnDarkThemeToken : shadcnThemeToken),
+              colorPrimary: this.state.themeData.colorPrimary,
+              colorInfo: this.state.themeData.colorPrimary,
+              borderRadius: this.state.themeData.borderRadius,
+            },
+            components: Setting.isDarkTheme(this.state.themeAlgorithm) ? shadcnDarkThemeComponents : shadcnThemeComponents,
+            algorithm: Setting.getAlgorithm(this.state.themeAlgorithm),
+          }}>
           <StyleProvider hashPriority="high" transformers={[legacyLogicalPropertiesTransformer]}>
             {
               this.renderPage()

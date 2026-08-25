@@ -25,12 +25,13 @@ export function getAccount(query = "") {
   }).then(res => res.json());
 }
 
-export function signup(values) {
-  return fetch(`${authConfig.serverUrl}/api/signup`, {
+export function signup(values, oAuthParams) {
+  return fetch(`${authConfig.serverUrl}/api/signup${oAuthParamsToQuery(oAuthParams)}`, {
     method: "POST",
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -56,8 +57,12 @@ export function oAuthParamsToQuery(oAuthParams) {
     return "";
   }
 
+  const resourceQuery = oAuthParams.resource
+    ? `&resource=${encodeURIComponent(oAuthParams.resource)}`
+    : "";
+
   // code
-  return `?clientId=${oAuthParams.clientId}&responseType=${oAuthParams.responseType}&redirectUri=${encodeURIComponent(oAuthParams.redirectUri)}&type=${oAuthParams.type}&scope=${oAuthParams.scope}&state=${oAuthParams.state}&nonce=${oAuthParams.nonce}&code_challenge_method=${oAuthParams.challengeMethod}&code_challenge=${oAuthParams.codeChallenge}`;
+  return `?clientId=${oAuthParams.clientId}&responseType=${oAuthParams.responseType}&redirectUri=${encodeURIComponent(oAuthParams.redirectUri)}&type=${oAuthParams.type}&scope=${oAuthParams.scope}&state=${oAuthParams.state}&nonce=${oAuthParams.nonce}&code_challenge_method=${oAuthParams.challengeMethod}&code_challenge=${oAuthParams.codeChallenge}${resourceQuery}`;
 }
 
 export function getApplicationLogin(params) {
@@ -78,12 +83,53 @@ export function getApplicationLogin(params) {
   }).then(res => res.json());
 }
 
+export function startDeviceLogin(clientId, scope) {
+  return fetch(`${authConfig.serverUrl}/api/device-auth?client_id=${encodeURIComponent(clientId)}&scope=${encodeURIComponent(scope)}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
+export function pollDeviceLoginToken(clientId, deviceCode) {
+  return fetch(`${authConfig.serverUrl}/api/login/oauth/access_token?client_id=${encodeURIComponent(clientId)}&grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:device_code")}&device_code=${encodeURIComponent(deviceCode)}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
+export function cancelDeviceLogin(userCode, cancelToken) {
+  return fetch(`${authConfig.serverUrl}/api/cancel-device-auth?userCode=${encodeURIComponent(userCode)}&cancelToken=${encodeURIComponent(cancelToken)}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
+export function completeDeviceLogin(deviceCode, oAuthParams) {
+  return fetch(`${authConfig.serverUrl}/api/device-auth-complete?deviceCode=${encodeURIComponent(deviceCode)}${oAuthParamsToQuery(oAuthParams).replace("?", "&")}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
 export function login(values, oAuthParams) {
   return fetch(`${authConfig.serverUrl}/api/login${oAuthParamsToQuery(oAuthParams)}`, {
     method: "POST",
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -95,6 +141,7 @@ export function loginCas(values, params) {
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -116,6 +163,7 @@ export function unlink(values) {
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -137,6 +185,7 @@ export function loginWithSaml(values, param) {
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());

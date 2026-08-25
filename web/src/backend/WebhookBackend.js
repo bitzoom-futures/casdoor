@@ -15,7 +15,7 @@
 import * as Setting from "../Setting";
 
 export function getWebhooks(owner, organization, page = "", pageSize = "", field = "", value = "", sortField = "", sortOrder = "") {
-  return fetch(`${Setting.ServerUrl}/api/get-webhooks?owner=${owner}&organization=${organization}&p=${page}&pageSize=${pageSize}&field=${field}&value=${value}&sortField=${sortField}&sortOrder=${sortOrder}`, {
+  return fetch(`${Setting.ServerUrl}/api/get-webhooks?owner=${owner}&organization=${encodeURIComponent(organization)}&p=${page}&pageSize=${pageSize}&field=${field}&value=${value}&sortField=${sortField}&sortOrder=${sortOrder}`, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -24,8 +24,8 @@ export function getWebhooks(owner, organization, page = "", pageSize = "", field
   }).then(res => res.json());
 }
 
-export function getWebhook(owner, name) {
-  return fetch(`${Setting.ServerUrl}/api/get-webhook?id=${owner}/${encodeURIComponent(name)}`, {
+export function getWebhook(owner, name, organization = owner) {
+  return fetch(`${Setting.ServerUrl}/api/get-webhook?id=${owner}/${encodeURIComponent(name)}&organization=${encodeURIComponent(organization)}`, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -41,6 +41,7 @@ export function updateWebhook(owner, name, webhook) {
     credentials: "include",
     body: JSON.stringify(newWebhook),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -53,6 +54,7 @@ export function addWebhook(webhook) {
     credentials: "include",
     body: JSON.stringify(newWebhook),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -65,6 +67,7 @@ export function deleteWebhook(webhook) {
     credentials: "include",
     body: JSON.stringify(newWebhook),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());

@@ -42,7 +42,8 @@ type SmsForm struct {
 }
 
 type NotificationForm struct {
-	Content string `json:"content"`
+	Content   string `json:"content"`
+	Recipient string `json:"recipient"`
 }
 
 // SendEmail
@@ -58,6 +59,14 @@ func (c *ApiController) SendEmail() {
 	userId, ok := c.RequireSignedIn()
 	if !ok {
 		return
+	}
+
+	if isSendEmailRateLimitEnabled() {
+		clientIp := util.GetClientIp(c.Ctx.Request)
+		if !getSendEmailLimiter(clientIp).Allow() {
+			c.ResponseError(c.T("service:Too many requests, please try again later"))
+			return
+		}
 	}
 
 	var emailForm EmailForm
@@ -99,6 +108,7 @@ func (c *ApiController) SendEmail() {
 			return
 		}
 		c.ResponseOk()
+		return
 	}
 
 	if util.IsStringsEmpty(emailForm.Title, emailForm.Content, emailForm.Sender) {
@@ -215,7 +225,7 @@ func (c *ApiController) SendNotification() {
 		return
 	}
 
-	err = object.SendNotification(provider, notificationForm.Content)
+	err = object.SendNotification(provider, notificationForm.Content, notificationForm.Recipient)
 	if err != nil {
 		c.ResponseError(err.Error())
 		return

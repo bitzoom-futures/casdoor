@@ -46,7 +46,7 @@ type LdapSyncResp struct {
 // @Success 200 {object} controllers.LdapResp The Response object
 // @router /get-ldap-users [get]
 func (c *ApiController) GetLdapUsers() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	_, ldapId, err := util.GetOwnerAndNameFromIdWithError(id)
 	if err != nil {
@@ -114,7 +114,7 @@ func (c *ApiController) GetLdapUsers() {
 // @Success 200 {array} object.Ldap The Response object
 // @router /get-ldaps [get]
 func (c *ApiController) GetLdaps() {
-	owner := c.Input().Get("owner")
+	owner := c.Ctx.Input.Query("owner")
 
 	c.ResponseOk(object.GetMaskedLdaps(object.GetLdaps(owner)))
 }
@@ -127,7 +127,7 @@ func (c *ApiController) GetLdaps() {
 // @Success 200 {object} object.Ldap The Response object
 // @router /get-ldap [get]
 func (c *ApiController) GetLdap() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	if util.IsStringsEmpty(id) {
 		c.ResponseError(c.T("general:Missing parameter"))
@@ -167,6 +167,16 @@ func (c *ApiController) AddLdap() {
 		return
 	}
 
+	organization, err := object.GetOrganization(util.GetId("admin", ldap.Owner))
+	if err != nil {
+		c.ResponseError(err.Error())
+		return
+	}
+	if organization == nil {
+		c.ResponseError(fmt.Sprintf(c.T("auth:The organization: %s does not exist"), ldap.Owner))
+		return
+	}
+
 	if ok, err := object.CheckLdapExist(&ldap); err != nil {
 		c.ResponseError(err.Error())
 		return
@@ -200,7 +210,7 @@ func (c *ApiController) AddLdap() {
 func (c *ApiController) UpdateLdap() {
 	var ldap object.Ldap
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &ldap)
-	if err != nil || util.IsStringsEmpty(ldap.Owner, ldap.ServerName, ldap.Host, ldap.Username, ldap.Password, ldap.BaseDn) {
+	if err != nil || util.IsStringsEmpty(ldap.Id, ldap.Owner, ldap.ServerName, ldap.Host, ldap.Username, ldap.Password, ldap.BaseDn) {
 		c.ResponseError(c.T("general:Missing parameter"))
 		return
 	}
@@ -208,6 +218,10 @@ func (c *ApiController) UpdateLdap() {
 	prevLdap, err := object.GetLdap(ldap.Id)
 	if err != nil {
 		c.ResponseError(err.Error())
+		return
+	}
+	if prevLdap == nil {
+		c.ResponseError(c.T("general:The object does not exist"))
 		return
 	}
 
@@ -266,7 +280,7 @@ func (c *ApiController) DeleteLdap() {
 // @Success 200 {object} controllers.LdapSyncResp The Response object
 // @router /sync-ldap-users [post]
 func (c *ApiController) SyncLdapUsers() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	owner, ldapId, err := util.GetOwnerAndNameFromIdWithError(id)
 	if err != nil {

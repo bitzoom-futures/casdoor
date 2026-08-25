@@ -15,21 +15,25 @@
 package conf
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/beego/beego"
+	"github.com/beego/beego/v2/server/web"
 )
+
+//go:embed waf.conf
+var WafConf string
 
 func init() {
 	// this array contains the beego configuration items that may be modified via env
 	presetConfigItems := []string{"httpport", "appname"}
 	for _, key := range presetConfigItems {
 		if value, ok := os.LookupEnv(key); ok {
-			err := beego.AppConfig.Set(key, value)
+			err := web.AppConfig.Set(key, value)
 			if err != nil {
 				panic(err)
 			}
@@ -42,12 +46,13 @@ func GetConfigString(key string) string {
 		return value
 	}
 
-	res := beego.AppConfig.String(key)
+	res, _ := web.AppConfig.String(key)
 	if res == "" {
 		if key == "staticBaseUrl" {
 			res = "https://cdn.casbin.org"
 		} else if key == "logConfig" {
-			res = fmt.Sprintf("{\"filename\": \"logs/%s.log\", \"maxdays\":99999, \"perm\":\"0770\"}", beego.AppConfig.String("appname"))
+			appname, _ := web.AppConfig.String("appname")
+			res = fmt.Sprintf("{\"filename\": \"logs/%s.log\", \"maxdays\":99999, \"perm\":\"0770\"}", appname)
 		}
 	}
 

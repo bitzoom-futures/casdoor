@@ -17,14 +17,13 @@ package pp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/casdoor/casdoor/conf"
 
 	"github.com/go-pay/gopay"
 	"github.com/go-pay/gopay/paypal"
-	"github.com/go-pay/gopay/pkg/util"
+	"github.com/go-pay/util"
 )
 
 type PaypalPaymentProvider struct {
@@ -53,7 +52,7 @@ func (pp *PaypalPaymentProvider) Pay(r *PayReq) (*PayResp, error) {
 	// https://github.com/go-pay/gopay/blob/main/doc/paypal.md
 	units := make([]*paypal.PurchaseUnit, 0, 1)
 	unit := &paypal.PurchaseUnit{
-		ReferenceId: util.GetRandomString(16),
+		ReferenceId: util.RandomString(16),
 		Amount: &paypal.Amount{
 			CurrencyCode: r.Currency,                    // e.g."USD"
 			Value:        priceFloat64ToString(r.Price), // e.g."100.00"
@@ -108,7 +107,7 @@ func (pp *PaypalPaymentProvider) Notify(body []byte, orderId string) (*NotifyRes
 			notifyResult.NotifyMessage = errDetail.Description
 			return notifyResult, nil
 		default:
-			err = fmt.Errorf(errDetail.Description)
+			err = errors.New(errDetail.Description)
 			return nil, err
 		}
 	}
@@ -125,7 +124,7 @@ func (pp *PaypalPaymentProvider) Notify(body []byte, orderId string) (*NotifyRes
 			notifyResult.NotifyMessage = errDetail.Description
 			return notifyResult, nil
 		default:
-			err = fmt.Errorf(errDetail.Description)
+			err = errors.New(errDetail.Description)
 			return nil, err
 		}
 	}

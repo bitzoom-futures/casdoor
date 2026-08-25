@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/beego/beego/utils/pagination"
+	"github.com/beego/beego/v2/core/utils/pagination"
 	"github.com/casdoor/casdoor/captcha"
 	"github.com/casdoor/casdoor/form"
 	"github.com/casdoor/casdoor/object"
@@ -39,21 +39,32 @@ const (
 // GetVerifications
 // @Title GetVerifications
 // @Tag Verification API
-// @Description get payments
-// @Param   owner     query    string  true        "The owner of payments"
+// @Description get verifications
+// @Param   owner     query    string  true        "The owner of verifications"
 // @Success 200 {array} object.Verification The Response object
 // @router /get-payments [get]
 func (c *ApiController) GetVerifications() {
-	owner := c.Input().Get("owner")
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
+	organization, ok := c.RequireAdmin()
+	if !ok {
+		return
+	}
+
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
+
+	owner := c.Ctx.Input.Query("owner")
+	// For global admin with organizationName parameter, use it to filter
+	// For org admin, use their organization
+	if c.IsGlobalAdmin() && owner != "" {
+		organization = owner
+	}
 
 	if limit == "" || page == "" {
-		payments, err := object.GetVerifications(owner)
+		payments, err := object.GetVerifications(organization)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
@@ -62,14 +73,14 @@ func (c *ApiController) GetVerifications() {
 		c.ResponseOk(payments)
 	} else {
 		limit := util.ParseInt(limit)
-		count, err := object.GetVerificationCount(owner, field, value)
+		count, err := object.GetVerificationCount(organization, field, value)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
-		payments, err := object.GetPaginationVerifications(owner, paginator.Offset(), limit, field, value, sortField, sortOrder)
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
+		payments, err := object.GetPaginationVerifications(organization, paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
@@ -82,15 +93,15 @@ func (c *ApiController) GetVerifications() {
 // GetUserVerifications
 // @Title GetUserVerifications
 // @Tag Verification API
-// @Description get payments for a user
-// @Param   owner     query    string  true        "The owner of payments"
+// @Description get verifications for a user
+// @Param   owner     query    string  true        "The owner of verifications"
 // @Param   organization    query   string  true   "The organization of the user"
 // @Param   user    query   string  true           "The username of the user"
 // @Success 200 {array} object.Verification The Response object
 // @router /get-user-payments [get]
 func (c *ApiController) GetUserVerifications() {
-	owner := c.Input().Get("owner")
-	user := c.Input().Get("user")
+	owner := c.Ctx.Input.Query("owner")
+	user := c.Ctx.Input.Query("user")
 
 	payments, err := object.GetUserVerifications(owner, user)
 	if err != nil {
@@ -104,12 +115,12 @@ func (c *ApiController) GetUserVerifications() {
 // GetVerification
 // @Title GetVerification
 // @Tag Verification API
-// @Description get payment
-// @Param   id     query    string  true        "The id ( owner/name ) of the payment"
+// @Description get verification
+// @Param   id     query    string  true        "The id ( owner/name ) of the verification"
 // @Success 200 {object} object.Verification The Response object
 // @router /get-payment [get]
 func (c *ApiController) GetVerification() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	payment, err := object.GetVerification(id)
 	if err != nil {
@@ -123,6 +134,16 @@ func (c *ApiController) GetVerification() {
 // SendVerificationCode ...
 // @Title SendVerificationCode
 // @Tag Verification API
+// @Description Send verification code to email or phone
+// @Param   dest          formData string true  "The destination email or phone number"
+// @Param   type          formData string true  "The verification type (email/phone)"
+// @Param   countryCode   formData string false "The country code for phone verification"
+// @Param   applicationId formData string true  "The application id (owner/name)"
+// @Param   method        formData string true  "The verification method (signup/login/forget/reset/mfaSetup/mfaAuth)"
+// @Param   checkUser     formData string false "The username to check"
+// @Param   captchaType   formData string true  "The captcha provider type"
+// @Param   clientSecret  formData string false "The captcha client secret"
+// @Param   captchaToken  formData string false "The captcha verification token"
 // @router /send-verification-code [post]
 // @Success 200 {object} object.Userinfo The Response object
 func (c *ApiController) SendVerificationCode() {
@@ -140,40 +161,31 @@ func (c *ApiController) SendVerificationCode() {
 		return
 	}
 
-	provider, err := object.GetCaptchaProviderByApplication(vform.ApplicationId, "false", c.GetAcceptLanguage())
-	if err != nil {
-		c.ResponseError(err.Error())
-		return
-	}
-
-	if provider != nil {
-		if vform.CaptchaType != provider.Type {
-			c.ResponseError(c.T("verification:Turing test failed."))
-			return
-		}
-
-		if provider.Type != "Default" {
-			vform.ClientSecret = provider.ClientSecret
-		}
-
-		if vform.CaptchaType != "none" {
-			if captchaProvider := captcha.GetCaptchaProvider(vform.CaptchaType); captchaProvider == nil {
-				c.ResponseError(c.T("general:don't support captchaProvider: ") + vform.CaptchaType)
-				return
-			} else if isHuman, err := captchaProvider.VerifyCaptcha(vform.CaptchaToken, provider.ClientId, vform.ClientSecret, provider.ClientId2); err != nil {
-				c.ResponseError(err.Error())
-				return
-			} else if !isHuman {
-				c.ResponseError(c.T("verification:Turing test failed."))
-				return
-			}
-		}
-	}
-
 	application, err := object.GetApplication(vform.ApplicationId)
 	if err != nil {
 		c.ResponseError(err.Error())
 		return
+	}
+
+	if application == nil {
+		c.ResponseError(fmt.Sprintf(c.T("auth:The application: %s does not exist"), vform.ApplicationId))
+		return
+	}
+
+	// Check if "Forgot password?" signin item is visible when using forget verification
+	if vform.Method == ForgetVerification {
+		isForgotPasswordEnabled := false
+		for _, item := range application.SigninItems {
+			if item.Name == "Forgot password?" {
+				isForgotPasswordEnabled = item.Visible
+				break
+			}
+		}
+		// Block access if the signin item is not found or is explicitly hidden
+		if !isForgotPasswordEnabled {
+			c.ResponseError(c.T("verification:The forgot password feature is disabled"))
+			return
+		}
 	}
 
 	organization, err := object.GetOrganization(util.GetId(application.Owner, application.Organization))
@@ -187,6 +199,7 @@ func (c *ApiController) SendVerificationCode() {
 	}
 
 	var user *object.User
+	// Try to resolve user for CAPTCHA rule checking
 	// checkUser != "", means method is ForgetVerification
 	if vform.CheckUser != "" {
 		owner := application.Organization
@@ -204,18 +217,90 @@ func (c *ApiController) SendVerificationCode() {
 			c.ResponseError(c.T("check:The user is forbidden to sign in, please contact the administrator"))
 			return
 		}
-	}
-
-	// mfaUserSession != "", means method is MfaAuthVerification
-	if mfaUserSession := c.getMfaUserSession(); mfaUserSession != "" {
+	} else if mfaUserSession := c.getMfaUserSession(); mfaUserSession != "" {
+		// mfaUserSession != "", means method is MfaAuthVerification
 		user, err = object.GetUser(mfaUserSession)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
 		}
+	} else if vform.Method == ResetVerification {
+		// For reset verification, get the current logged-in user
+		user = c.getCurrentUser()
+	} else if vform.Method == LoginVerification {
+		// For login verification, try to find user by email/phone for CAPTCHA check
+		// This is a preliminary lookup; the actual validation happens later in the switch statement
+		if vform.Type == object.VerifyTypeEmail && util.IsEmailValid(vform.Dest) {
+			user, err = object.GetUserByEmail(organization.Name, vform.Dest)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
+		} else if vform.Type == object.VerifyTypePhone {
+			// Prefer resolving the user directly by phone, consistent with the later login switch,
+			// so that Dynamic CAPTCHA is not skipped due to missing/invalid country code.
+			user, err = object.GetUserByPhone(organization.Name, vform.Dest)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
+		}
+	}
+
+	// Determine username for CAPTCHA check
+	username := ""
+	if user != nil {
+		username = user.Name
+	} else if vform.CheckUser != "" {
+		username = vform.CheckUser
+	}
+
+	// Check if CAPTCHA should be enabled based on the rule (Dynamic/Always/Internet-Only)
+	enableCaptcha, err := object.CheckToEnableCaptcha(application, organization.Name, username, clientIp)
+	if err != nil {
+		c.ResponseError(err.Error())
+		return
+	}
+
+	if vform.CaptchaToken != "" {
+		enableCaptcha = true
+	}
+
+	// Only verify CAPTCHA if it should be enabled
+	if enableCaptcha {
+		captchaProvider, err := object.GetCaptchaProviderByApplication(vform.ApplicationId, "false", c.GetAcceptLanguage())
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+
+		if captchaProvider != nil {
+			if vform.CaptchaType != captchaProvider.Type {
+				c.ResponseError(c.T("verification:Turing test failed."))
+				return
+			}
+
+			if captchaProvider.Type != "Default" {
+				vform.ClientSecret = captchaProvider.ClientSecret
+			}
+
+			if vform.CaptchaType != "none" {
+				if captchaService := captcha.GetCaptchaProvider(vform.CaptchaType); captchaService == nil {
+					c.ResponseError(c.T("general:don't support captchaProvider: ") + vform.CaptchaType)
+					return
+				} else if isHuman, err := captchaService.VerifyCaptcha(vform.CaptchaToken, captchaProvider.ClientId, vform.ClientSecret, captchaProvider.ClientId2); err != nil {
+					c.ResponseError(err.Error())
+					return
+				} else if !isHuman {
+					c.ResponseError(c.T("verification:Turing test failed."))
+					return
+				}
+			}
+		}
 	}
 
 	sendResp := errors.New("invalid dest type")
+	var provider *object.Provider
 
 	switch vform.Type {
 	case object.VerifyTypeEmail:
@@ -239,11 +324,22 @@ func (c *ApiController) SendVerificationCode() {
 				c.ResponseError(c.T("verification:the user does not exist, please sign up first"))
 				return
 			}
+
+			if vform.Method == ForgetVerification {
+				if err = object.CheckLdapPasswordForget(user); err != nil {
+					c.ResponseError(err.Error())
+					return
+				}
+			}
 		} else if vform.Method == ResetVerification {
 			user = c.getCurrentUser()
 		} else if vform.Method == MfaAuthVerification {
+			if user == nil {
+				c.ResponseError(c.T("general:Please sign in first"))
+				return
+			}
 			mfaProps := user.GetMfaProps(object.EmailType, false)
-			if user != nil && util.GetMaskedEmail(mfaProps.Secret) == vform.Dest {
+			if util.GetMaskedEmail(mfaProps.Secret) == vform.Dest {
 				vform.Dest = mfaProps.Secret
 			}
 		}
@@ -256,6 +352,14 @@ func (c *ApiController) SendVerificationCode() {
 		if provider == nil {
 			c.ResponseError(fmt.Sprintf(c.T("verification:please add an Email provider to the \"Providers\" list for the application: %s"), application.Name))
 			return
+		}
+
+		// let a "Custom HTTP Email" webhook localize the email, a signup code is sent before the user exists
+		if provider.HttpHeaders == nil {
+			provider.HttpHeaders = map[string]string{}
+		}
+		if _, ok := provider.HttpHeaders["Accept-Language"]; !ok {
+			provider.HttpHeaders["Accept-Language"] = c.GetAcceptLanguage()
 		}
 
 		sendResp = object.SendVerificationCodeToEmail(organization, user, provider, clientIp, vform.Dest, vform.Method, c.Ctx.Request.Host, application.Name, application)
@@ -273,6 +377,13 @@ func (c *ApiController) SendVerificationCode() {
 				return
 			}
 
+			if vform.Method == ForgetVerification {
+				if err = object.CheckLdapPasswordForget(user); err != nil {
+					c.ResponseError(err.Error())
+					return
+				}
+			}
+
 			vform.CountryCode = user.GetCountryCode(vform.CountryCode)
 		} else if vform.Method == ResetVerification || vform.Method == MfaSetupVerification {
 			if vform.CountryCode == "" {
@@ -281,8 +392,12 @@ func (c *ApiController) SendVerificationCode() {
 				}
 			}
 		} else if vform.Method == MfaAuthVerification {
+			if user == nil {
+				c.ResponseError(c.T("general:Please sign in first"))
+				return
+			}
 			mfaProps := user.GetMfaProps(object.SmsType, false)
-			if user != nil && util.GetMaskedPhone(mfaProps.Secret) == vform.Dest {
+			if util.GetMaskedPhone(mfaProps.Secret) == vform.Dest {
 				vform.Dest = mfaProps.Secret
 			}
 
@@ -318,6 +433,11 @@ func (c *ApiController) SendVerificationCode() {
 // VerifyCaptcha ...
 // @Title VerifyCaptcha
 // @Tag Verification API
+// @Description Verify a captcha token
+// @Param   captchaType   formData string true "The captcha provider type"
+// @Param   captchaToken  formData string true "The captcha verification token"
+// @Param   clientSecret  formData string true "The captcha client secret"
+// @Param   applicationId formData string true "The application id (owner/name)"
 // @router /verify-captcha [post]
 // @Success 200 {object} object.Userinfo The Response object
 func (c *ApiController) VerifyCaptcha() {
@@ -361,6 +481,10 @@ func (c *ApiController) VerifyCaptcha() {
 // ResetEmailOrPhone ...
 // @Tag Account API
 // @Title ResetEmailOrPhone
+// @Description Reset user email or phone with verification code
+// @Param   type formData string true "The destination type (email/phone)"
+// @Param   dest formData string true "The new email or phone number"
+// @Param   code formData string true "The verification code"
 // @router /reset-email-or-phone [post]
 // @Success 200 {object} object.Userinfo The Response object
 func (c *ApiController) ResetEmailOrPhone() {
@@ -368,6 +492,8 @@ func (c *ApiController) ResetEmailOrPhone() {
 	if !ok {
 		return
 	}
+
+	clientIp := util.GetClientIpFromRequest(c.Ctx.Request)
 
 	destType := c.Ctx.Request.Form.Get("type")
 	dest := c.Ctx.Request.Form.Get("dest")
@@ -385,8 +511,17 @@ func (c *ApiController) ResetEmailOrPhone() {
 		return
 	}
 
+	countryCode := user.GetCountryCode("")
 	if destType == object.VerifyTypePhone {
-		if object.HasUserByField(user.Owner, "phone", dest) {
+		normalizedPhone, normalizedCountryCode, isValid := util.GetNormalizedPhone(dest, countryCode)
+		if !isValid {
+			c.ResponseError(fmt.Sprintf(c.T("verification:Phone number is invalid in your region %s"), countryCode))
+			return
+		}
+
+		dest, countryCode = normalizedPhone, normalizedCountryCode
+
+		if object.HasUserByPhoneAndCountryCode(user.Owner, dest, countryCode) {
 			c.ResponseError(c.T("check:Phone already exists"))
 			return
 		}
@@ -401,8 +536,8 @@ func (c *ApiController) ResetEmailOrPhone() {
 			c.ResponseError(errMsg)
 			return
 		}
-		if checkDest, ok = util.GetE164Number(dest, user.GetCountryCode("")); !ok {
-			c.ResponseError(fmt.Sprintf(c.T("verification:Phone number is invalid in your region %s"), user.CountryCode))
+		if checkDest, ok = util.GetE164Number(dest, countryCode); !ok {
+			c.ResponseError(fmt.Sprintf(c.T("verification:Phone number is invalid in your region %s"), countryCode))
 			return
 		}
 	} else if destType == object.VerifyTypeEmail {
@@ -423,13 +558,9 @@ func (c *ApiController) ResetEmailOrPhone() {
 		}
 	}
 
-	result, err := object.CheckVerificationCode(checkDest, code, c.GetAcceptLanguage())
+	err = object.CheckVerifyCodeWithLimitAndIp(user, clientIp, checkDest, code, c.GetAcceptLanguage())
 	if err != nil {
-		c.ResponseError(c.T(err.Error()))
-		return
-	}
-	if result.Code != object.VerificationSuccess {
-		c.ResponseError(result.Msg)
+		c.ResponseError(err.Error())
 		return
 	}
 
@@ -446,7 +577,8 @@ func (c *ApiController) ResetEmailOrPhone() {
 		_, err = object.UpdateUser(id, user, columns, false)
 	case object.VerifyTypePhone:
 		user.Phone = dest
-		_, err = object.SetUserField(user, "phone", user.Phone)
+		user.CountryCode = countryCode
+		_, err = object.UpdateUser(user.GetId(), user, []string{"phone", "country_code"}, false)
 	default:
 		c.ResponseError(c.T("verification:Unknown type"))
 		return
@@ -471,6 +603,8 @@ func (c *ApiController) ResetEmailOrPhone() {
 // VerifyCode
 // @Tag Verification API
 // @Title VerifyCode
+// @Description Verify a verification code
+// @Param   body body form.AuthForm true "Verification request"
 // @router /verify-code [post]
 // @Success 200 {object} object.Userinfo The Response object
 func (c *ApiController) VerifyCode() {
@@ -502,7 +636,16 @@ func (c *ApiController) VerifyCode() {
 		}
 	}
 
-	if user, err = object.GetUserByFields(authForm.Organization, authForm.Username); err != nil {
+	// For phone-based lookup, normalise to E.164 before querying so that users
+	// in different countries sharing the same local number are distinguished correctly.
+	lookupUsername := authForm.Username
+	if !strings.Contains(authForm.Username, "@") && authForm.CountryCode != "" {
+		if e164, ok := util.GetE164Number(authForm.Username, authForm.CountryCode); ok {
+			lookupUsername = e164
+		}
+	}
+
+	if user, err = object.GetUserByFields(authForm.Organization, lookupUsername); err != nil {
 		c.ResponseError(err.Error())
 		return
 	} else if user == nil {
@@ -527,13 +670,10 @@ func (c *ApiController) VerifyCode() {
 	}
 
 	if !passed {
-		result, err := object.CheckVerificationCode(checkDest, authForm.Code, c.GetAcceptLanguage())
+		clientIp := util.GetClientIpFromRequest(c.Ctx.Request)
+		err = object.CheckVerifyCodeWithLimitAndIp(user, clientIp, checkDest, authForm.Code, c.GetAcceptLanguage())
 		if err != nil {
 			c.ResponseError(err.Error())
-			return
-		}
-		if result.Code != object.VerificationSuccess {
-			c.ResponseError(result.Msg)
 			return
 		}
 

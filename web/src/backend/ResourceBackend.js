@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as Setting from "../Setting";
+import * as Conf from "../Conf";
 
 export function getResources(owner, user, page = "", pageSize = "", field = "", value = "", sortField = "", sortOrder = "") {
   return fetch(`${Setting.ServerUrl}/api/get-resources?owner=${owner}&user=${user}&p=${page}&pageSize=${pageSize}&field=${field}&value=${value}&sortField=${sortField}&sortOrder=${sortOrder}`, {
@@ -41,6 +42,7 @@ export function updateResource(owner, name, resource) {
     credentials: "include",
     body: JSON.stringify(newResource),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -53,6 +55,7 @@ export function addResource(resource) {
     credentials: "include",
     body: JSON.stringify(newResource),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -65,13 +68,14 @@ export function deleteResource(resource, provider = "") {
     credentials: "include",
     body: JSON.stringify(newResource),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
 }
 
 export function uploadResource(owner, user, tag, parent, fullFilePath, file, provider = "") {
-  const application = "app-built-in";
+  const application = Conf.DefaultApplication;
   const formData = new FormData();
   formData.append("file", file);
   return fetch(`${Setting.ServerUrl}/api/upload-resource?owner=${owner}&user=${user}&application=${application}&tag=${tag}&parent=${parent}&fullFilePath=${encodeURIComponent(fullFilePath)}&provider=${provider}`, {

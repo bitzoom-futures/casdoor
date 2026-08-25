@@ -5,7 +5,7 @@
 *.so
 *.dylib
 *.swp
-server_*
+/server_*
 
 # Test binary, built with `go test -c`
 *.test
@@ -23,6 +23,7 @@ bin/
 server-backup/
 *.iml
 .vscode/settings.json
+.claude
 
 tmp/
 tmpFiles/
@@ -39,4 +40,7 @@ server
 # include helm-chart
 !manifests/casdoor
 
+web/cypress/videos/
+web/cypress/screenshots/
 *.conf
+.DS_Store

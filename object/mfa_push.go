@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/casdoor/casdoor/notification"
-	"github.com/google/uuid"
+	"github.com/casdoor/casdoor/util"
 )
 
 type PushMfa struct {
@@ -31,7 +31,7 @@ type PushMfa struct {
 	challengeExp time.Time
 }
 
-func (mfa *PushMfa) Initiate(userId string) (*MfaProps, error) {
+func (mfa *PushMfa) Initiate(userId string, issuer string) (*MfaProps, error) {
 	mfaProps := MfaProps{
 		MfaType: mfa.MfaType,
 	}
@@ -111,7 +111,7 @@ func (mfa *PushMfa) sendPushNotification(title string, message string) error {
 	// Generate a unique challenge ID for this notification
 	// Note: In a full implementation, this would be stored in a cache/database
 	// to validate callbacks from the mobile app
-	mfa.challengeId = uuid.NewString()
+	mfa.challengeId = util.GenerateUUID()
 	mfa.challengeExp = time.Now().Add(5 * time.Minute) // Challenge expires in 5 minutes
 
 	// Get the notification provider

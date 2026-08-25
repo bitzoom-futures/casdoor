@@ -13,12 +13,16 @@
 // limitations under the License.
 
 import React from "react";
-import {Button, Descriptions, InputNumber, Space, Spin} from "antd";
+import {Button, Descriptions, Divider, InputNumber, Radio, Space, Spin, Typography} from "antd";
+import moment from "moment";
 import i18next from "i18next";
 import * as ProductBackend from "./backend/ProductBackend";
 import * as PlanBackend from "./backend/PlanBackend";
 import * as PricingBackend from "./backend/PricingBackend";
+import * as OrderBackend from "./backend/OrderBackend";
+import * as UserBackend from "./backend/UserBackend";
 import * as Setting from "./Setting";
+import {FloatingCartButton, QuantityStepper} from "./common/product/CartControls";
 
 class ProductBuyPage extends React.Component {
   constructor(props) {
@@ -36,7 +40,10 @@ class ProductBuyPage extends React.Component {
       pricing: props?.pricing ?? null,
       plan: null,
       isPlacingOrder: false,
-      customPrice: 0,
+      isAddingToCart: false,
+      customPrice: 100,
+      buyQuantity: params.get("quantity") ? parseInt(params.get("quantity"), 10) : 1,
+      cartItemCount: 0,
     };
   }
 
@@ -55,6 +62,22 @@ class ProductBuyPage extends React.Component {
   UNSAFE_componentWillMount() {
     this.getProduct();
     this.getPaymentEnv();
+    this.getCartItemCount();
+  }
+
+  getCartItemCount() {
+    if (!this.props.account) {
+      return;
+    }
+    const userOwner = this.props.account.owner;
+    const userName = this.props.account.name;
+    UserBackend.getUser(userOwner, userName).then((res) => {
+      if (res.status === "ok" && res.data.cart) {
+        this.setState({
+          cartItemCount: res.data.cart.length,
+        });
+      }
+    });
   }
 
   setStateAsync(state) {
@@ -104,6 +127,18 @@ class ProductBuyPage extends React.Component {
       this.setState({
         product: res.data,
       });
+
+      if (res.data.isRecharge) {
+        if (res.data.rechargeOptions?.length > 0) {
+          this.setState({
+            customPrice: res.data.rechargeOptions[0],
+          });
+        } else {
+          this.setState({
+            customPrice: 100,
+          });
+        }
+      }
     } catch (err) {
       Setting.showMessage("error", err.message);
       return;
@@ -118,136 +153,126 @@ class ProductBuyPage extends React.Component {
     }
   }
 
-  getCurrencySymbol(product) {
-    if (product?.currency === "USD") {
-      return "$";
-    } else if (product?.currency === "CNY") {
-      return "￥";
-    } else if (product?.currency === "EUR") {
-      return "€";
-    } else if (product?.currency === "JPY") {
-      return "¥";
-    } else if (product?.currency === "GBP") {
-      return "£";
-    } else if (product?.currency === "AUD") {
-      return "A$";
-    } else if (product?.currency === "CAD") {
-      return "C$";
-    } else if (product?.currency === "CHF") {
-      return "CHF";
-    } else if (product?.currency === "HKD") {
-      return "HK$";
-    } else if (product?.currency === "SGD") {
-      return "S$";
-    } else if (product?.currency === "BRL") {
-      return "R$";
-    } else if (product?.currency === "PLN") {
-      return "zł";
-    } else if (product?.currency === "KRW") {
-      return "₩";
-    } else if (product?.currency === "INR") {
-      return "₹";
-    } else if (product?.currency === "RUB") {
-      return "₽";
-    } else if (product?.currency === "MXN") {
-      return "$";
-    } else if (product?.currency === "ZAR") {
-      return "R";
-    } else if (product?.currency === "TRY") {
-      return "₺";
-    } else if (product?.currency === "SEK") {
-      return "kr";
-    } else if (product?.currency === "NOK") {
-      return "kr";
-    } else if (product?.currency === "DKK") {
-      return "kr";
-    } else if (product?.currency === "THB") {
-      return "฿";
-    } else if (product?.currency === "MYR") {
-      return "RM";
-    } else if (product?.currency === "TWD") {
-      return "NT$";
-    } else if (product?.currency === "CZK") {
-      return "Kč";
-    } else if (product?.currency === "HUF") {
-      return "Ft";
-    } else {
-      return "(Unknown currency)";
-    }
-  }
-
   getPrice(product) {
-    return `${this.getCurrencySymbol(product)}${product?.price} (${Setting.getCurrencyText(product)})`;
+    return `${Setting.getCurrencySymbol(product?.currency)}${product?.price} (${Setting.getCurrencyText(product?.currency)})`;
   }
 
-  // Call Weechat Pay via jsapi
-  onBridgeReady(attachInfo) {
-    const {WeixinJSBridge} = window;
-    // Setting.showMessage("success", "attachInfo is " + JSON.stringify(attachInfo));
-    this.setState({
-      isPlacingOrder: false,
-    });
-    WeixinJSBridge.invoke(
-      "getBrandWCPayRequest", {
-        "appId": attachInfo.appId,
-        "timeStamp": attachInfo.timeStamp,
-        "nonceStr": attachInfo.nonceStr,
-        "package": attachInfo.package,
-        "signType": attachInfo.signType,
-        "paySign": attachInfo.paySign,
-      },
-      function(res) {
-        if (res.err_msg === "get_brand_wcpay_request:ok") {
-          Setting.goToLink(attachInfo.payment.successUrl);
-          return ;
-        } else {
-          if (res.err_msg === "get_brand_wcpay_request:cancel") {
-            Setting.showMessage("error", i18next.t("product:Payment cancelled"));
-          } else {
-            Setting.showMessage("error", i18next.t("product:Payment failed"));
-          }
-        }
-      }
-    );
-  }
-
-  // In Wechat browser, call this function to pay via jsapi
-  callWechatPay(attachInfo) {
-    const {WeixinJSBridge} = window;
-    if (typeof WeixinJSBridge === "undefined") {
-      if (document.addEventListener) {
-        document.addEventListener("WeixinJSBridgeReady", () => this.onBridgeReady(attachInfo), false);
-      } else if (document.attachEvent) {
-        document.attachEvent("WeixinJSBridgeReady", () => this.onBridgeReady(attachInfo));
-        document.attachEvent("onWeixinJSBridgeReady", () => this.onBridgeReady(attachInfo));
-      }
-    } else {
-      this.onBridgeReady(attachInfo);
+  addToCart(product) {
+    if (this.state.isAddingToCart) {
+      return;
     }
+
+    this.setState({isAddingToCart: true});
+
+    const userOwner = this.props.account.owner;
+    const userName = this.props.account.name;
+
+    UserBackend.getUser(userOwner, userName)
+      .then((res) => {
+        if (res.status === "ok") {
+          const user = res.data;
+          const cart = user.cart || [];
+
+          let actualPrice = product.price;
+          if (product.isRecharge) {
+            actualPrice = this.state.customPrice;
+            if (actualPrice <= 0) {
+              Setting.showMessage("error", i18next.t("product:Custom price should be greater than zero"));
+              this.setState({isAddingToCart: false});
+              return;
+            }
+          }
+
+          const pricingName = this.state.pricingName || "";
+          const planName = this.state.planName || "";
+          if (cart.length > 0) {
+            const firstItem = cart[0];
+            if (firstItem.currency && product.currency && firstItem.currency !== product.currency) {
+              Setting.showMessage("error", i18next.t("product:The currency of the product you are adding is different from the currency of the items in the cart"));
+              this.setState({isAddingToCart: false});
+              return;
+            }
+          }
+
+          const cartPrice = product.isRecharge ? actualPrice : null;
+          const existingItemIndex = cart.findIndex(item =>
+            item.name === product.name &&
+            (product.isRecharge ? item.price === actualPrice : true) &&
+            (item.pricingName || "") === pricingName &&
+            (item.planName || "") === planName
+          );
+          const quantityToAdd = this.state.buyQuantity;
+
+          if (existingItemIndex !== -1) {
+            cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity ?? 1) + quantityToAdd;
+          } else {
+            const newProductInfo = {
+              name: product.name,
+              createdTime: moment().format(),
+              price: cartPrice,
+              currency: product.currency,
+              pricingName: pricingName,
+              planName: planName,
+              quantity: quantityToAdd,
+            };
+            cart.push(newProductInfo);
+          }
+
+          user.cart = cart;
+          UserBackend.updateUser(user.owner, user.name, user)
+            .then((res) => {
+              if (res.status === "ok") {
+                Setting.showMessage("success", i18next.t("general:Successfully added"));
+                this.setState({
+                  cartItemCount: cart.length,
+                });
+              } else {
+                Setting.showMessage("error", res.msg);
+              }
+            })
+            .catch((error) => {
+              Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
+            })
+            .finally(() => {
+              this.setState({isAddingToCart: false});
+            });
+        } else {
+          Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${res.msg}`);
+          this.setState({isAddingToCart: false});
+        }
+      })
+      .catch((error) => {
+        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
+        this.setState({isAddingToCart: false});
+      });
   }
 
-  buyProduct(product, provider) {
+  placeOrder(product) {
     this.setState({
       isPlacingOrder: true,
     });
 
-    ProductBackend.buyProduct(product.owner, product.name, provider.name, this.state.pricingName ?? "", this.state.planName ?? "", this.state.userName ?? "", this.state.paymentEnv, this.state.customPrice)
+    const pricingName = this.state.pricingName || "";
+    const planName = this.state.planName || "";
+    const customPrice = this.state.customPrice || 0;
+
+    const productInfos = [{
+      name: product.name,
+      price: product.isRecharge ? customPrice : product.price,
+      pricingName: pricingName,
+      planName: planName,
+      quantity: this.state.buyQuantity,
+    }];
+
+    OrderBackend.placeOrder(product.owner, productInfos, this.state.userName ?? "")
       .then((res) => {
         if (res.status === "ok") {
-          const payment = res.data;
-          const attachInfo = res.data2;
-          let payUrl = payment.payUrl;
-          if (provider.type === "WeChat Pay") {
-            if (this.state.paymentEnv === "WechatBrowser") {
-              attachInfo.payment = payment;
-              this.callWechatPay(attachInfo);
-              return ;
-            }
-            payUrl = `/qrcode/${payment.owner}/${payment.name}?providerName=${provider.name}&payUrl=${encodeURIComponent(payment.payUrl)}&successUrl=${encodeURIComponent(payment.successUrl)}`;
-          }
-          Setting.goToLink(payUrl);
+          const order = res.data;
+          Setting.showMessage("success", i18next.t("product:Order created successfully"));
+          // Redirect to order pay page
+          Setting.goToLink(`/orders/${order.owner}/${order.name}/pay`);
         } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
+          Setting.showMessage("error", `${i18next.t("product:Failed to create order")}: ${res.msg}`);
           this.setState({
             isPlacingOrder: false,
           });
@@ -255,49 +280,65 @@ class ProductBuyPage extends React.Component {
       })
       .catch(error => {
         Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
+        this.setState({
+          isPlacingOrder: false,
+        });
       });
   }
 
-  getPayButton(provider) {
-    let text = provider.type;
-    if (provider.type === "Dummy") {
-      text = i18next.t("product:Dummy");
-    } else if (provider.type === "Alipay") {
-      text = i18next.t("product:Alipay");
-    } else if (provider.type === "WeChat Pay") {
-      text = i18next.t("product:WeChat Pay");
-    } else if (provider.type === "PayPal") {
-      text = i18next.t("product:PayPal");
-    } else if (provider.type === "Stripe") {
-      text = i18next.t("product:Stripe");
-    } else if (provider.type === "AirWallex") {
-      text = i18next.t("product:AirWallex");
+  renderRechargeInput(product) {
+    const hasOptions = product.rechargeOptions && product.rechargeOptions.length > 0;
+    const disableCustom = product.disableCustomRecharge;
+
+    if (!hasOptions && disableCustom) {
+      return (
+        <Typography.Text type="danger">
+          {i18next.t("product:This product is currently not purchasable (No options available)")}
+        </Typography.Text>
+      );
     }
 
     return (
-      <Button style={{height: "50px", borderWidth: "2px"}} shape="round" icon={
-        <img style={{marginRight: "10px"}} width={36} height={36} src={Setting.getProviderLogoURL(provider)} alt={provider.displayName} />
-      } size={"large"} >
-        {
-          text
-        }
-      </Button>
+      <Space direction="vertical" style={{width: "100%"}}>
+        {hasOptions && (
+          <>
+            <div>
+              <span style={{marginRight: "10px", fontSize: 16}}>
+                {i18next.t("product:Select amount")}:
+              </span>
+              <Radio.Group
+                value={this.state.customPrice}
+                onChange={(e) => {this.setState({customPrice: e.target.value});}}
+              >
+                <Space wrap>
+                  {product.rechargeOptions.map((amount, index) => (
+                    <Radio.Button key={index} value={amount}>
+                      {Setting.getCurrencySymbol(product.currency)}{amount}
+                    </Radio.Button>
+                  ))}
+                </Space>
+              </Radio.Group>
+            </div>
+            {!disableCustom && <Divider style={{margin: "10px 0"}}>{i18next.t("general:Or")}</Divider>}
+          </>
+        )}
+        <Space>
+          <span style={{fontSize: 16}}>
+            {i18next.t("product:Amount")}:
+          </span>
+          <InputNumber
+            min={0}
+            value={this.state.customPrice}
+            onChange={(e) => {this.setState({customPrice: e});}}
+            disabled={disableCustom}
+          />
+          <span style={{fontSize: 16}}>{Setting.getCurrencyText(product?.currency)}</span>
+        </Space>
+      </Space>
     );
   }
 
-  renderProviderButton(provider, product) {
-    return (
-      <span key={provider.name} style={{width: "200px", marginRight: "20px", marginBottom: "10px"}}>
-        <span style={{width: "200px", cursor: "pointer"}} onClick={() => this.buyProduct(product, provider)}>
-          {
-            this.getPayButton(provider)
-          }
-        </span>
-      </span>
-    );
-  }
-
-  renderPay(product) {
+  renderPlaceOrderButton(product) {
     if (product === undefined || product === null) {
       return null;
     }
@@ -305,17 +346,66 @@ class ProductBuyPage extends React.Component {
     if (product.state !== "Published") {
       return i18next.t("product:This product is currently not in sale.");
     }
-    if (product.providerObjs.length === 0) {
-      return i18next.t("product:There is no payment channel for this product.");
-    }
 
-    return product.providerObjs.map(provider => {
-      return this.renderProviderButton(provider, product);
-    });
+    const hasOptions = product.rechargeOptions && product.rechargeOptions.length > 0;
+    const disableCustom = product.disableCustomRecharge;
+    const isRechargeUnpurchasable = product.isRecharge && !hasOptions && disableCustom;
+    const isAmountZero = product.isRecharge && (this.state.customPrice === 0 || this.state.customPrice === null);
+
+    return (
+      <div style={{display: "flex", justifyContent: "center", alignItems: "center", gap: "25px"}}>
+        <QuantityStepper
+          value={this.state.buyQuantity}
+          min={1}
+          onIncrease={() => this.setState(prevState => ({buyQuantity: prevState.buyQuantity + 1}))}
+          onDecrease={() => this.setState(prevState => ({buyQuantity: Math.max(1, prevState.buyQuantity - 1)}))}
+          onChange={(val) => this.setState({buyQuantity: val || 1})}
+          disabled={isRechargeUnpurchasable || this.state.isAddingToCart || isAmountZero}
+          style={{
+            height: "50px",
+            fontSize: "18px",
+            width: "140px",
+          }}
+        />
+        <Button
+          type="default"
+          size="large"
+          style={{
+            height: "50px",
+            fontSize: "18px",
+            borderRadius: "30px",
+            paddingLeft: "40px",
+            paddingRight: "40px",
+          }}
+          onClick={() => this.addToCart(product)}
+          disabled={isRechargeUnpurchasable || this.state.isAddingToCart || isAmountZero}
+          loading={this.state.isAddingToCart}
+        >
+          {i18next.t("product:Add to cart")}
+        </Button>
+        <Button
+          type="primary"
+          size="large"
+          style={{
+            height: "50px",
+            fontSize: "18px",
+            borderRadius: "30px",
+            paddingLeft: "40px",
+            paddingRight: "40px",
+          }}
+          onClick={() => this.placeOrder(product)}
+          disabled={this.state.isPlacingOrder || isRechargeUnpurchasable || isAmountZero}
+          loading={this.state.isPlacingOrder}
+        >
+          {i18next.t("general:Place Order")}
+        </Button>
+      </div>
+    );
   }
 
   render() {
     const product = this.getProductObj();
+    const placeOrderButton = this.renderPlaceOrderButton(product);
 
     if (product === null) {
       return null;
@@ -323,6 +413,10 @@ class ProductBuyPage extends React.Component {
 
     return (
       <div className="login-content">
+        <FloatingCartButton
+          itemCount={this.state.cartItemCount}
+          onClick={() => this.props.history.push("/cart")}
+        />
         <Spin spinning={this.state.isPlacingOrder} size="large" tip={i18next.t("product:Placing order...")} style={{paddingTop: "10%"}} >
           <Descriptions title={<span style={Setting.isMobile() ? {fontSize: 20} : {fontSize: 28}}>{i18next.t("product:Buy Product")}</span>} bordered>
             <Descriptions.Item label={i18next.t("general:Name")} span={3}>
@@ -330,22 +424,20 @@ class ProductBuyPage extends React.Component {
                 {Setting.getLanguageText(product?.displayName)}
               </span>
             </Descriptions.Item>
-            <Descriptions.Item label={i18next.t("product:Detail")}><span style={{fontSize: 16}}>{Setting.getLanguageText(product?.detail)}</span></Descriptions.Item>
-            <Descriptions.Item label={i18next.t("user:Tag")}><span style={{fontSize: 16}}>{product?.tag}</span></Descriptions.Item>
+            <Descriptions.Item label={i18next.t("general:Detail")}><span style={{fontSize: 16}}>{Setting.getLanguageText(product?.detail)}</span></Descriptions.Item>
+            <Descriptions.Item label={i18next.t("general:Tag")}><span style={{fontSize: 16}}>{product?.tag}</span></Descriptions.Item>
             <Descriptions.Item label={i18next.t("product:SKU")}><span style={{fontSize: 16}}>{product?.name}</span></Descriptions.Item>
             <Descriptions.Item label={i18next.t("product:Image")} span={3}>
               <img src={product?.image} alt={product?.name} height={90} style={{marginBottom: "20px"}} />
             </Descriptions.Item>
             {
               product.isRecharge ? (
-                <Descriptions.Item span={3} label={i18next.t("product:Price")}>
-                  <Space>
-                    <InputNumber min={0} value={this.state.customPrice} onChange={(e) => {this.setState({customPrice: e});}} /> {Setting.getCurrencyText(product)}
-                  </Space>
+                <Descriptions.Item span={3} label={i18next.t("order:Price")}>
+                  {this.renderRechargeInput(product)}
                 </Descriptions.Item>
               ) : (
                 <React.Fragment>
-                  <Descriptions.Item label={i18next.t("product:Price")}>
+                  <Descriptions.Item label={i18next.t("order:Price")}>
                     <span style={{fontSize: 28, color: "red", fontWeight: "bold"}}>
                       {
                         this.getPrice(product)
@@ -357,10 +449,10 @@ class ProductBuyPage extends React.Component {
                 </React.Fragment>
               )
             }
-            <Descriptions.Item label={i18next.t("product:Pay")} span={3}>
-              {
-                this.renderPay(product)
-              }
+            <Descriptions.Item label={i18next.t("general:Place Order")} span={3}>
+              <div style={{display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80px"}}>
+                {placeOrderButton}
+              </div>
             </Descriptions.Item>
           </Descriptions>
         </Spin>

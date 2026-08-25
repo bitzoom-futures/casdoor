@@ -73,7 +73,7 @@ class VerificationListPage extends BaseListPage {
         },
       },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "type",
         key: "type",
         width: "90px",
@@ -142,7 +142,7 @@ class VerificationListPage extends BaseListPage {
         title: i18next.t("login:Verification code"),
         dataIndex: "code",
         key: "code",
-        width: "150px",
+        width: "160px",
         sorter: true,
         ...this.getColumnSearchProps("code"),
       },
@@ -154,7 +154,7 @@ class VerificationListPage extends BaseListPage {
         sorter: true,
         render: (text, record, index) => {
           return (
-            <Switch disabled checkedChildren="ON" unCheckedChildren="OFF" checked={text} />
+            <Switch disabled checkedChildren={i18next.t("general:ON")} unCheckedChildren={i18next.t("general:OFF")} checked={text} />
           );
         },
       },
@@ -169,13 +169,13 @@ class VerificationListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={verifications} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={verifications} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Verifications")}&nbsp;&nbsp;&nbsp;&nbsp;
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

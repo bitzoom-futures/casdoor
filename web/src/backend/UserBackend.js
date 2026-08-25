@@ -45,17 +45,6 @@ export function getUser(owner, name) {
   }).then(res => res.json());
 }
 
-export function addUserKeys(user) {
-  return fetch(`${Setting.ServerUrl}/api/add-user-keys`, {
-    method: "POST",
-    credentials: "include",
-    body: JSON.stringify(user),
-    headers: {
-      "Accept-Language": Setting.getAcceptLanguage(),
-    },
-  }).then(res => res.json());
-}
-
 export function updateUser(owner, name, user) {
   const newUser = Setting.deepCopy(user);
   return fetch(`${Setting.ServerUrl}/api/update-user?id=${owner}/${encodeURIComponent(name)}`, {
@@ -63,6 +52,7 @@ export function updateUser(owner, name, user) {
     credentials: "include",
     body: JSON.stringify(newUser),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -75,6 +65,7 @@ export function addUser(user) {
     credentials: "include",
     body: JSON.stringify(newUser),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -87,6 +78,7 @@ export function deleteUser(user) {
     credentials: "include",
     body: JSON.stringify(newUser),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -200,6 +192,34 @@ export function resetEmailOrPhone(dest, type, code) {
   }).then(res => res.json());
 }
 
+export function impersonateUser(owner, name) {
+  const formData = new FormData();
+  formData.append("owner", owner);
+  formData.append("name", name);
+  return fetch(`${Setting.ServerUrl}/api/impersonate-user`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
+export function exitImpersonateUser(owner, name) {
+  const formData = new FormData();
+  formData.append("owner", owner);
+  formData.append("name", name);
+  return fetch(`${Setting.ServerUrl}/api/exit-impersonate-user`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
 export function getCaptcha(owner, name, isCurrentProvider) {
   return fetch(`${Setting.ServerUrl}/api/get-captcha?applicationId=${owner}/${encodeURIComponent(name)}&isCurrentProvider=${isCurrentProvider}`, {
     method: "GET",
@@ -215,6 +235,7 @@ export function verifyCode(values) {
     credentials: "include",
     body: JSON.stringify(values),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -237,6 +258,32 @@ export function removeUserFromGroup({owner, name, groupName}) {
     method: "POST",
     credentials: "include",
     body: formData,
+    headers: {
+      "Accept-Language": Setting.getAcceptLanguage(),
+    },
+  }).then(res => res.json());
+}
+
+export function verifyIdentification(owner, name, provider) {
+  let url = `${Setting.ServerUrl}/api/verify-identification`;
+  const params = [];
+
+  if (owner && name) {
+    params.push(`owner=${owner}`);
+    params.push(`name=${name}`);
+  }
+
+  if (provider) {
+    params.push(`provider=${encodeURIComponent(provider)}`);
+  }
+
+  if (params.length > 0) {
+    url += `?${params.join("&")}`;
+  }
+
+  return fetch(url, {
+    method: "POST",
+    credentials: "include",
     headers: {
       "Accept-Language": Setting.getAcceptLanguage(),
     },

@@ -16,8 +16,9 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/beego/beego/utils/pagination"
+	"github.com/beego/beego/v2/core/utils/pagination"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
 )
@@ -30,16 +31,35 @@ import (
 // @Success 200 {array} object.Subscription The Response object
 // @router /get-subscriptions [get]
 func (c *ApiController) GetSubscriptions() {
-	owner := c.Input().Get("owner")
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
+	owner := c.Ctx.Input.Query("owner")
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
 
 	if limit == "" || page == "" {
-		subscriptions, err := object.GetSubscriptions(owner)
+		var subscriptions []*object.Subscription
+		var err error
+
+		if c.IsAdmin() {
+			// If field is "user", filter by that user even for admins
+			if field == "user" && value != "" {
+				subscriptions, err = object.GetSubscriptionsByUser(owner, value)
+			} else {
+				subscriptions, err = object.GetSubscriptions(owner)
+			}
+		} else {
+			user := c.GetSessionUsername()
+			_, userName, userErr := util.GetOwnerAndNameFromIdWithError(user)
+			if userErr != nil {
+				c.ResponseError(userErr.Error())
+				return
+			}
+			subscriptions, err = object.GetSubscriptionsByUser(owner, userName)
+		}
+
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
@@ -48,13 +68,23 @@ func (c *ApiController) GetSubscriptions() {
 		c.ResponseOk(subscriptions)
 	} else {
 		limit := util.ParseInt(limit)
+		if !c.IsAdmin() {
+			user := c.GetSessionUsername()
+			_, userName, userErr := util.GetOwnerAndNameFromIdWithError(user)
+			if userErr != nil {
+				c.ResponseError(userErr.Error())
+				return
+			}
+			field = "user"
+			value = userName
+		}
 		count, err := object.GetSubscriptionCount(owner, field, value)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
 		subscription, err := object.GetPaginationSubscriptions(owner, paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
@@ -73,7 +103,7 @@ func (c *ApiController) GetSubscriptions() {
 // @Success 200 {object} object.Subscription The Response object
 // @router /get-subscription [get]
 func (c *ApiController) GetSubscription() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	subscription, err := object.GetSubscription(id)
 	if err != nil {
@@ -93,7 +123,7 @@ func (c *ApiController) GetSubscription() {
 // @Success 200 {object} controllers.Response The Response object
 // @router /update-subscription [post]
 func (c *ApiController) UpdateSubscription() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	var subscription object.Subscription
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &subscription)
@@ -119,6 +149,26 @@ func (c *ApiController) AddSubscription() {
 	if err != nil {
 		c.ResponseError(err.Error())
 		return
+	}
+
+	// Check if plan restricts user to one subscription
+	if subscription.Plan != "" {
+		plan, err := object.GetPlan(util.GetId(subscription.Owner, subscription.Plan))
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+		if plan != nil && plan.IsExclusive {
+			hasSubscription, err := object.HasActiveSubscriptionForPlan(subscription.Owner, subscription.User, subscription.Plan)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
+			if hasSubscription {
+				c.ResponseError(fmt.Sprintf("User already has an active subscription for plan: %s", subscription.Plan))
+				return
+			}
+		}
 	}
 
 	c.Data["json"] = wrapActionResponse(object.AddSubscription(&subscription))

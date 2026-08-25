@@ -32,6 +32,7 @@ type AccountItem struct {
 	ViewRule   string `json:"viewRule"`
 	ModifyRule string `json:"modifyRule"`
 	Regex      string `json:"regex"`
+	Tab        string `json:"tab"`
 }
 
 type ThemeData struct {
@@ -64,9 +65,13 @@ type Organization struct {
 	PasswordObfuscatorType string     `xorm:"varchar(100)" json:"passwordObfuscatorType"`
 	PasswordObfuscatorKey  string     `xorm:"varchar(100)" json:"passwordObfuscatorKey"`
 	PasswordExpireDays     int        `json:"passwordExpireDays"`
+	TokenRetentionDays     int        `json:"tokenRetentionDays"`
+	RecordRetentionDays    int        `json:"recordRetentionDays"`
 	CountryCodes           []string   `xorm:"mediumtext"  json:"countryCodes"`
 	DefaultAvatar          string     `xorm:"varchar(200)" json:"defaultAvatar"`
+	UsePermanentAvatar     bool       `xorm:"bool" json:"usePermanentAvatar"`
 	DefaultApplication     string     `xorm:"varchar(100)" json:"defaultApplication"`
+	DefaultTokenFormat     string     `xorm:"varchar(100)" json:"defaultTokenFormat"`
 	UserTypes              []string   `xorm:"mediumtext" json:"userTypes"`
 	Tags                   []string   `xorm:"mediumtext" json:"tags"`
 	Languages              []string   `xorm:"varchar(255)" json:"languages"`
@@ -83,14 +88,27 @@ type Organization struct {
 	DisableSignin          bool       `json:"disableSignin"`
 	IpRestriction          string     `json:"ipRestriction"`
 	NavItems               []string   `xorm:"mediumtext" json:"navItems"`
+	UserNavItems           []string   `xorm:"mediumtext" json:"userNavItems"`
 	WidgetItems            []string   `xorm:"mediumtext" json:"widgetItems"`
 
 	MfaItems           []*MfaItem     `xorm:"varchar(300)" json:"mfaItems"`
 	MfaRememberInHours int            `json:"mfaRememberInHours"`
+	AccountMenu        string         `xorm:"varchar(20)" json:"accountMenu"`
 	AccountItems       []*AccountItem `xorm:"mediumtext" json:"accountItems"`
 
-	OrgBalance  float64 `json:"orgBalance"`
-	UserBalance float64 `json:"userBalance"`
+	DcrPolicy string `xorm:"varchar(100)" json:"dcrPolicy"`
+
+	LdapAttributes []string `xorm:"mediumtext" json:"ldapAttributes"`
+
+	KerberosRealm       string `xorm:"varchar(200)" json:"kerberosRealm"`
+	KerberosKdcHost     string `xorm:"varchar(200)" json:"kerberosKdcHost"`
+	KerberosKeytab      string `xorm:"mediumtext" json:"kerberosKeytab"`
+	KerberosServiceName string `xorm:"varchar(100)" json:"kerberosServiceName"`
+
+	OrgBalance      float64 `json:"orgBalance"`
+	UserBalance     float64 `json:"userBalance"`
+	BalanceCredit   float64 `json:"balanceCredit"`
+	BalanceCurrency string  `xorm:"varchar(100)" json:"balanceCurrency"`
 }
 
 func GetOrganizationCount(owner, name, field, value string) (int64, error) {
@@ -167,7 +185,7 @@ func GetOrganization(id string) (*Organization, error) {
 	return getOrganization(owner, name)
 }
 
-func GetMaskedOrganization(organization *Organization, errs ...error) (*Organization, error) {
+func GetMaskedOrganization(isAdmin bool, organization *Organization, errs ...error) (*Organization, error) {
 	if len(errs) > 0 && errs[0] != nil {
 		return nil, errs[0]
 	}
@@ -185,23 +203,44 @@ func GetMaskedOrganization(organization *Organization, errs ...error) (*Organiza
 	if organization.MasterVerificationCode != "" {
 		organization.MasterVerificationCode = "***"
 	}
+	if !isAdmin {
+		if organization.PasswordObfuscatorKey != "" {
+			organization.PasswordObfuscatorKey = "***"
+		}
+		if organization.PasswordSalt != "" {
+			organization.PasswordSalt = "***"
+		}
+	}
 	return organization, nil
 }
 
-func GetMaskedOrganizations(organizations []*Organization, errs ...error) ([]*Organization, error) {
+func GetMaskedOrganizations(isAdmin bool, organizations []*Organization, errs ...error) ([]*Organization, error) {
 	if len(errs) > 0 && errs[0] != nil {
 		return nil, errs[0]
 	}
 
 	var err error
 	for _, organization := range organizations {
-		organization, err = GetMaskedOrganization(organization)
+		organization, err = GetMaskedOrganization(isAdmin, organization)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return organizations, nil
+}
+
+// hashMasterPassword hashes the master password in place so that it is never stored in plaintext.
+// The masked value "***" means the password is unchanged, so it is left as-is.
+func (organization *Organization) hashMasterPassword() {
+	if organization.MasterPassword == "" || organization.MasterPassword == "***" {
+		return
+	}
+
+	credManager := cred.GetCredManager(organization.PasswordType)
+	if credManager != nil {
+		organization.MasterPassword = credManager.GetHashedPassword(organization.MasterPassword, organization.PasswordSalt)
+	}
 }
 
 func UpdateOrganization(id string, organization *Organization, isGlobalAdmin bool) (bool, error) {
@@ -227,16 +266,11 @@ func UpdateOrganization(id string, organization *Organization, isGlobalAdmin boo
 		}
 	}
 
-	if organization.MasterPassword != "" && organization.MasterPassword != "***" {
-		credManager := cred.GetCredManager(organization.PasswordType)
-		if credManager != nil {
-			hashedPassword := credManager.GetHashedPassword(organization.MasterPassword, organization.PasswordSalt)
-			organization.MasterPassword = hashedPassword
-		}
-	}
+	organization.hashMasterPassword()
 
 	if !isGlobalAdmin {
 		organization.NavItems = org.NavItems
+		organization.UserNavItems = org.UserNavItems
 		organization.WidgetItems = org.WidgetItems
 	}
 
@@ -261,6 +295,19 @@ func UpdateOrganization(id string, organization *Organization, isGlobalAdmin boo
 }
 
 func AddOrganization(organization *Organization) (bool, error) {
+	// there is no previous record for a new organization, so the masked values mean "empty"
+	if organization.MasterPassword == "***" {
+		organization.MasterPassword = ""
+	}
+	if organization.DefaultPassword == "***" {
+		organization.DefaultPassword = ""
+	}
+	if organization.MasterVerificationCode == "***" {
+		organization.MasterVerificationCode = ""
+	}
+
+	organization.hashMasterPassword()
+
 	affected, err := ormer.Engine.Insert(organization)
 	if err != nil {
 		return false, err
@@ -292,6 +339,22 @@ func GetOrganizationByUser(user *User) (*Organization, error) {
 	}
 
 	return getOrganization("admin", user.Owner)
+}
+
+// GetDefaultTokenFormat returns the token format that newly created applications of the
+// organization should use. It falls back to "JWT" when the organization does not exist or
+// has no default token format configured yet.
+func GetDefaultTokenFormat(organizationName string) (string, error) {
+	organization, err := getOrganization("admin", organizationName)
+	if err != nil {
+		return "", err
+	}
+
+	if organization == nil || organization.DefaultTokenFormat == "" {
+		return "JWT", nil
+	}
+
+	return organization.DefaultTokenFormat, nil
 }
 
 func GetAccountItemByName(name string, organization *Organization) *AccountItem {
@@ -586,7 +649,7 @@ func (org *Organization) GetInitScore() (int, error) {
 	}
 }
 
-func UpdateOrganizationBalance(owner string, name string, balance float64, isOrgBalance bool, lang string) error {
+func UpdateOrganizationBalance(owner string, name string, balance float64, currency string, isOrgBalance bool, lang string) error {
 	organization, err := getOrganization(owner, name)
 	if err != nil {
 		return err
@@ -595,12 +658,27 @@ func UpdateOrganizationBalance(owner string, name string, balance float64, isOrg
 		return fmt.Errorf(i18n.Translate(lang, "auth:the organization: %s is not found"), fmt.Sprintf("%s/%s", owner, name))
 	}
 
+	// Convert the balance amount from transaction currency to organization's balance currency
+	balanceCurrency := organization.BalanceCurrency
+	if balanceCurrency == "" {
+		balanceCurrency = "USD"
+	}
+	convertedBalance := ConvertCurrency(balance, currency, balanceCurrency)
+
 	var columns []string
+	var newBalance float64
 	if isOrgBalance {
-		organization.OrgBalance += balance
+		newBalance = AddPrices(organization.OrgBalance, convertedBalance)
+		// Check organization balance credit limit
+		if newBalance < organization.BalanceCredit {
+			return fmt.Errorf(i18n.Translate(lang, "general:Insufficient balance: new organization balance %v would be below credit limit %v"), newBalance, organization.BalanceCredit)
+		}
+		organization.OrgBalance = newBalance
 		columns = []string{"org_balance"}
 	} else {
-		organization.UserBalance += balance
+		// User balance is just a sum of all users' balances, no credit limit check here
+		// Individual user credit limits are checked in UpdateUserBalance
+		organization.UserBalance = AddPrices(organization.UserBalance, convertedBalance)
 		columns = []string{"user_balance"}
 	}
 

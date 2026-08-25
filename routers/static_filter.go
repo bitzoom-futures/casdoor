@@ -16,6 +16,7 @@ package routers
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -24,7 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/context"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/casdoor/casdoor/conf"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
@@ -85,6 +87,18 @@ func getWebBuildFolder() string {
 	}
 
 	path = filepath.Join(frontendBaseDir, "web/build")
+	if util.FileExist(filepath.Join(path, "index.html")) {
+		return path
+	}
+
+	casdoorDir := filepath.Join(filepath.Dir(frontendBaseDir), "casdoor")
+	if util.FileExist(filepath.Join(casdoorDir, "index.html")) {
+		return casdoorDir
+	}
+	if util.FileExist(filepath.Join(casdoorDir, "web/build", "index.html")) {
+		return filepath.Join(casdoorDir, "web/build")
+	}
+
 	return path
 }
 
@@ -101,6 +115,7 @@ func fastAutoSignin(ctx *context.Context) (string, error) {
 	state := ctx.Input.Query("state")
 	nonce := ctx.Input.Query("nonce")
 	codeChallenge := ctx.Input.Query("code_challenge")
+	resource := ctx.Input.Query("resource")
 	if clientId == "" || responseType != "code" || redirectUri == "" {
 		return "", nil
 	}
@@ -126,11 +141,28 @@ func fastAutoSignin(ctx *context.Context) (string, error) {
 		return "", nil
 	}
 
-	code, err := object.GetOAuthCode(userId, clientId, "", "autoSignin", responseType, redirectUri, scope, state, nonce, codeChallenge, ctx.Request.Host, getAcceptLanguage(ctx))
+	user, err := object.GetUser(userId)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return "", nil
+	}
+
+	consentRequired, err := object.CheckConsentRequired(user, application, scope)
+	if err != nil {
+		return "", err
+	}
+
+	if consentRequired {
+		return "", nil
+	}
+
+	code, err := object.GetOAuthCode(userId, clientId, "", "autoSignin", responseType, redirectUri, scope, state, nonce, codeChallenge, resource, ctx.Request.Host, getAcceptLanguage(ctx))
 	if err != nil {
 		return "", err
 	} else if code.Message != "" {
-		return "", fmt.Errorf(code.Message)
+		return "", errors.New(code.Message)
 	}
 
 	sep := "?"
@@ -151,6 +183,12 @@ func StaticFilter(ctx *context.Context) {
 	if strings.HasPrefix(urlPath, "/api/") || strings.HasPrefix(urlPath, "/.well-known/") {
 		return
 	}
+	if serveAuthCallbackHandlerScript(ctx) {
+		return
+	}
+	if serveProviderHintRedirectScript(ctx) {
+		return
+	}
 	if strings.HasPrefix(urlPath, "/cas") && (strings.HasSuffix(urlPath, "/serviceValidate") || strings.HasSuffix(urlPath, "/proxy") || strings.HasSuffix(urlPath, "/proxyValidate") || strings.HasSuffix(urlPath, "/validate") || strings.HasSuffix(urlPath, "/p3/serviceValidate") || strings.HasSuffix(urlPath, "/p3/proxyValidate") || strings.HasSuffix(urlPath, "/samlValidate")) {
 		return
 	}
@@ -169,6 +207,14 @@ func StaticFilter(ctx *context.Context) {
 			http.Redirect(ctx.ResponseWriter, ctx.Request, redirectUrl, http.StatusFound)
 			return
 		}
+
+		if serveProviderHintRedirectPage(ctx) {
+			return
+		}
+	}
+
+	if serveAuthCallbackPage(ctx) {
+		return
 	}
 
 	webBuildFolder := getWebBuildFolder()
@@ -189,6 +235,12 @@ func StaticFilter(ctx *context.Context) {
 
 	if strings.Contains(path, "/../") || !util.FileExist(path) {
 		path = webBuildFolder + "/index.html"
+	}
+	if strings.HasSuffix(path, "/index.html") {
+		err = util.AppendWebConfigCookie(ctx)
+		if err != nil {
+			logs.Error("AppendWebConfigCookie failed in StaticFilter, error: %s", err)
+		}
 	}
 	if !util.FileExist(path) {
 		dir, err := os.Getwd()
@@ -222,6 +274,14 @@ func serveFileWithReplace(w http.ResponseWriter, r *http.Request, name string, o
 	if organizationThemeCookie != nil {
 		newContent = strings.ReplaceAll(newContent, "https://cdn.casbin.org/img/favicon.png", organizationThemeCookie.Favicon)
 		newContent = strings.ReplaceAll(newContent, "<title>Casdoor</title>", fmt.Sprintf("<title>%s</title>", organizationThemeCookie.DisplayName))
+	}
+
+	// Set the correct <html lang="..."> on the initial HTML response so browsers
+	// do not mis-detect the page language (e.g. Chrome offering to translate a
+	// Chinese page into Chinese because the static shell declares lang="en").
+	if strings.HasSuffix(name, "index.html") {
+		lang := getIndexHtmlLanguage(r)
+		newContent = strings.ReplaceAll(newContent, `<html lang="en">`, fmt.Sprintf(`<html lang="%s">`, lang))
 	}
 
 	newContent = strings.ReplaceAll(newContent, oldStaticBaseUrl, getStaticBaseUrl(r))

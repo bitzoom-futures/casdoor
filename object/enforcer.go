@@ -30,7 +30,7 @@ type Enforcer struct {
 	CreatedTime string `xorm:"varchar(100)" json:"createdTime"`
 	UpdatedTime string `xorm:"varchar(100) updated" json:"updatedTime"`
 	DisplayName string `xorm:"varchar(100)" json:"displayName"`
-	Description string `xorm:"varchar(100)" json:"description"`
+	Description string `xorm:"mediumtext" json:"description"`
 
 	Model   string `xorm:"varchar(100)" json:"model"`
 	Adapter string `xorm:"varchar(100)" json:"adapter"`
@@ -171,7 +171,7 @@ func (enforcer *Enforcer) InitEnforcer() error {
 		return err
 	}
 
-	casbinEnforcer, err := casbin.NewEnforcer(m.Model, a.Adapter)
+	casbinEnforcer, err := casbin.NewEnforcer(m.Model, NewSafeAdapter(a))
 	if err != nil {
 		return err
 	}
@@ -196,21 +196,27 @@ func GetInitializedEnforcer(enforcerId string) (*Enforcer, error) {
 }
 
 func GetPolicies(id string) ([]*xormadapter.CasbinRule, error) {
-	enforcer, err := GetInitializedEnforcer(id)
+	enforcer, err := GetEnforcer(id)
+	if err != nil {
+		return nil, err
+	}
+	if enforcer == nil {
+		return nil, fmt.Errorf("the enforcer: %s is not found", id)
+	}
+
+	a, err := GetAdapter(enforcer.Adapter)
+	if err != nil {
+		return nil, err
+	} else if a == nil {
+		return nil, fmt.Errorf("the adapter: %s for enforcer: %s is not found", enforcer.Adapter, enforcer.GetId())
+	}
+
+	err = a.InitAdapter()
 	if err != nil {
 		return nil, err
 	}
 
-	pRules := enforcer.GetPolicy()
-	res := util.MatrixToCasbinRules("p", pRules)
-
-	if enforcer.GetModel()["g"] != nil {
-		gRules := enforcer.GetGroupingPolicy()
-		res2 := util.MatrixToCasbinRules("g", gRules)
-		res = append(res, res2...)
-	}
-
-	return res, nil
+	return NewSafeAdapter(a).GetRules()
 }
 
 // Filter represents filter criteria with optional policy type
@@ -366,7 +372,7 @@ func (enforcer *Enforcer) LoadModelCfg() error {
 		return nil
 	}
 
-	model, err := GetModelEx(enforcer.Model)
+	model, err := getModelEx(enforcer.Model)
 	if err != nil {
 		return err
 	} else if model == nil {

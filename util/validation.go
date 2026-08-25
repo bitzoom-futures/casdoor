@@ -25,17 +25,19 @@ import (
 )
 
 var (
-	rePhone             *regexp.Regexp
-	ReWhiteSpace        *regexp.Regexp
-	ReFieldWhiteList    *regexp.Regexp
-	ReUserName          *regexp.Regexp
-	ReUserNameWithEmail *regexp.Regexp
+	rePhone                    *regexp.Regexp
+	ReWhiteSpace               *regexp.Regexp
+	ReFieldWhiteList           *regexp.Regexp
+	ReFieldWhiteListIdentifier *regexp.Regexp
+	ReUserName                 *regexp.Regexp
+	ReUserNameWithEmail        *regexp.Regexp
 )
 
 func init() {
 	rePhone, _ = regexp.Compile(`(\d{3})\d*(\d{4})`)
 	ReWhiteSpace, _ = regexp.Compile(`\s`)
 	ReFieldWhiteList, _ = regexp.Compile(`^[A-Za-z0-9]+$`)
+	ReFieldWhiteListIdentifier, _ = regexp.Compile(`^[A-Za-z][A-Za-z0-9_]*$`)
 	ReUserName, _ = regexp.Compile("^[a-zA-Z0-9]+([-._][a-zA-Z0-9]+)*$")
 	ReUserNameWithEmail, _ = regexp.Compile(`^([a-zA-Z0-9]+([-._][a-zA-Z0-9]+)*)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$`) // Add support for email formats
 }
@@ -82,6 +84,27 @@ func GetE164Number(phone string, countryCode string) (string, bool) {
 	return phonenumbers.Format(phoneNumber, phonenumbers.E164), phonenumbers.IsValidNumber(phoneNumber)
 }
 
+// GetNormalizedPhone converts a phone number like "+48 666 666 666" into the national number
+// in digits only (e.g. "666666666") and the region code (e.g. "PL"), it returns the input
+// unchanged when the phone number is invalid.
+func GetNormalizedPhone(phone string, countryCode string) (string, string, bool) {
+	phoneNumber, err := phonenumbers.Parse(phone, countryCode)
+	if err != nil || !phonenumbers.IsValidNumber(phoneNumber) {
+		return phone, countryCode, false
+	}
+
+	// Only take the region from the number itself when it is in the international format,
+	// so that a shared calling code like "+1" doesn't overwrite the chosen country code
+	normalizedCountryCode := countryCode
+	if normalizedCountryCode == "" || strings.HasPrefix(strings.TrimSpace(phone), "+") {
+		if regionCode := phonenumbers.GetRegionCodeForNumber(phoneNumber); regionCode != "" {
+			normalizedCountryCode = regionCode
+		}
+	}
+
+	return fmt.Sprintf("%d", phoneNumber.GetNationalNumber()), normalizedCountryCode, true
+}
+
 func GetCountryCode(prefix string, phone string) (string, error) {
 	if prefix == "" || phone == "" {
 		return "", nil
@@ -102,6 +125,13 @@ func GetCountryCode(prefix string, phone string) (string, error) {
 
 func FilterField(field string) bool {
 	return ReFieldWhiteList.MatchString(field)
+}
+
+// FilterSQLIdentifier validates that field is a safe SQL column identifier.
+// It allows letters, digits, and underscores (e.g. "id_card", "created_time"),
+// and requires the name to start with a letter to block numeric/special-char attacks.
+func FilterSQLIdentifier(field string) bool {
+	return ReFieldWhiteListIdentifier.MatchString(field)
 }
 
 func IsValidOrigin(origin string) (bool, error) {

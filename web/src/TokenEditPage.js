@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
+import Editor from "./common/Editor";
 import {Button, Card, Col, Input, Row} from "antd";
 import * as TokenBackend from "./backend/TokenBackend";
 import * as Setting from "./Setting";
@@ -38,6 +40,14 @@ class TokenEditPage extends React.Component {
   }
 
   getToken() {
+    if (this.state.mode === "add" && this.props.location.token) {
+      const token = this.props.location.token;
+      this.setState({
+        token: token,
+      });
+      return;
+    }
+
     TokenBackend.getToken("admin", this.state.tokenName)
       .then((res) => {
         if (res.data === null) {
@@ -75,13 +85,19 @@ class TokenEditPage extends React.Component {
 
   parseAccessToken(accessToken) {
     try {
-      const parsedHeader = JSON.stringify(jwtDecode(accessToken, {header: true}), null, 2);
-      const parsedPayload = JSON.stringify(jwtDecode(accessToken), null, 2);
-      const res = parsedHeader + "." + parsedPayload;
-      return res;
+      const header = jwtDecode(accessToken, {header: true});
+      const payload = jwtDecode(accessToken);
+      return JSON.stringify({header, payload}, null, 2);
     } catch (error) {
-      return error.message;
+      return JSON.stringify({error: error.message}, null, 2);
     }
+  }
+
+  getParsedTokenEditorHeight(parsedResult) {
+    const lineHeight = 22;
+    const lines = parsedResult.split("\n").length;
+    const visibleRows = Math.min(30, Math.max(10, lines));
+    return `${visibleRows * lineHeight}px`;
   }
 
   renderToken() {
@@ -188,7 +204,7 @@ class TokenEditPage extends React.Component {
             >
               {i18next.t("token:Copy access token")}
             </Button>
-            <TextArea autoSize={{minRows: 10, maxRows: 200}} value={this.state.token.accessToken} onChange={e => {
+            <TextArea autoSize={{minRows: 10, maxRows: 30}} value={this.state.token.accessToken} onChange={e => {
               this.updateTokenField("accessToken", e.target.value);
             }} />
           </Col>
@@ -204,7 +220,14 @@ class TokenEditPage extends React.Component {
             >
               {i18next.t("token:Copy parsed result")}
             </Button>
-            <TextArea autoSize={{minRows: 10, maxRows: 200}} value={parsedResult} />
+            <Editor
+              value={parsedResult}
+              lang="json"
+              readOnly
+              fillWidth
+              dark
+              height={this.getParsedTokenEditorHeight(parsedResult)}
+            />
           </Col>
         </Row>
       </Card>
@@ -213,12 +236,17 @@ class TokenEditPage extends React.Component {
 
   submitTokenEdit(exitAfterSave) {
     const token = Setting.deepCopy(this.state.token);
-    TokenBackend.updateToken(this.state.token.owner, this.state.tokenName, token)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? TokenBackend.addToken(token)
+      : TokenBackend.updateToken(this.state.token.owner, this.state.tokenName, token);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
             tokenName: this.state.token.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -228,7 +256,9 @@ class TokenEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateTokenField("name", this.state.tokenName);
+          if (!isAdd) {
+            this.updateTokenField("name", this.state.tokenName);
+          }
         }
       })
       .catch(error => {
@@ -237,26 +267,16 @@ class TokenEditPage extends React.Component {
   }
 
   deleteToken() {
-    TokenBackend.deleteToken(this.state.token)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/tokens");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/tokens");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.token !== null ? this.renderToken() : null
+          this.state.token !== null ? this.renderToken() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitTokenEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitTokenEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteToken()}>{i18next.t("general:Cancel")}</Button> : null}

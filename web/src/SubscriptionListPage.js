@@ -45,18 +45,7 @@ class SubscriptionListPage extends BaseListPage {
 
   addSubscription() {
     const newSubscription = this.newSubscription();
-    SubscriptionBackend.addSubscription(newSubscription)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/subscriptions/${newSubscription.owner}/${newSubscription.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/subscriptions/${newSubscription.owner}/${newSubscription.name}`, mode: "add", subscription: newSubscription});
   }
 
   deleteSubscription(i) {
@@ -131,7 +120,7 @@ class SubscriptionListPage extends BaseListPage {
         ...this.getColumnSearchProps("displayName"),
       },
       {
-        title: i18next.t("subscription:Period"),
+        title: i18next.t("plan:Period"),
         dataIndex: "period",
         key: "period",
         width: "140px",
@@ -143,6 +132,9 @@ class SubscriptionListPage extends BaseListPage {
         key: "startTime",
         width: "140px",
         ...this.getColumnSearchProps("startTime"),
+        render: (text, record, index) => {
+          return Setting.getFormattedDate(text);
+        },
       },
       {
         title: i18next.t("subscription:End time"),
@@ -150,6 +142,9 @@ class SubscriptionListPage extends BaseListPage {
         key: "endTime",
         width: "140px",
         ...this.getColumnSearchProps("endTime"),
+        render: (text, record, index) => {
+          return Setting.getFormattedDate(text);
+        },
       },
       {
         title: i18next.t("general:Plan"),
@@ -159,7 +154,7 @@ class SubscriptionListPage extends BaseListPage {
         ...this.getColumnSearchProps("plan"),
         render: (text, record, index) => {
           return (
-            <Link to={`/plans/${record.owner}/${text}`}>
+            <Link to={`/plans/${text}`}>
               {text}
             </Link>
           );
@@ -173,7 +168,7 @@ class SubscriptionListPage extends BaseListPage {
         ...this.getColumnSearchProps("user"),
         render: (text, record, index) => {
           return (
-            <Link to={`/users/${record.owner}/${text}`}>
+            <Link to={`/users/${text}`}>
               {text}
             </Link>
           );
@@ -187,7 +182,7 @@ class SubscriptionListPage extends BaseListPage {
         ...this.getColumnSearchProps("payment"),
         render: (text, record, index) => {
           return (
-            <Link to={`/payments/${record.owner}/${text}`}>
+            <Link to={`/payments/${text}`}>
               {text}
             </Link>
           );
@@ -203,7 +198,7 @@ class SubscriptionListPage extends BaseListPage {
         render: (text, record, index) => {
           switch (text) {
           case "Pending":
-            return Setting.getTag("processing", i18next.t("subscription:Pending"), <ExclamationCircleOutlined />);
+            return Setting.getTag("processing", i18next.t("webhook:Pending"), <ExclamationCircleOutlined />);
           case "Active":
             return Setting.getTag("success", i18next.t("subscription:Active"), <SyncOutlined spin />);
           case "Upcoming":
@@ -211,7 +206,7 @@ class SubscriptionListPage extends BaseListPage {
           case "Expired":
             return Setting.getTag("warning", i18next.t("subscription:Expired"), <ClockCircleOutlined />);
           case "Error":
-            return Setting.getTag("error", i18next.t("subscription:Error"), <CloseCircleOutlined />);
+            return Setting.getTag("error", i18next.t("general:Error"), <CloseCircleOutlined />);
           case "Suspended":
             return Setting.getTag("default", i18next.t("subscription:Suspended"), <MinusCircleOutlined />);
           default:
@@ -226,10 +221,12 @@ class SubscriptionListPage extends BaseListPage {
         width: "230px",
         fixed: (Setting.isMobile()) ? "false" : "right",
         render: (text, record, index) => {
+          const isAdmin = Setting.isLocalAdminUser(this.props.account);
           return (
             <div>
-              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push(`/subscriptions/${record.owner}/${record.name}`)}>{i18next.t("general:Edit")}</Button>
+              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push({pathname: `/subscriptions/${record.owner}/${record.name}`, mode: isAdmin ? "edit" : "view"})}>{isAdmin ? i18next.t("general:Edit") : i18next.t("general:View")}</Button>
               <PopconfirmModal
+                disabled={!isAdmin}
                 title={i18next.t("general:Sure to delete") + `: ${record.name} ?`}
                 onConfirm={() => this.deleteSubscription(index)}
               >
@@ -249,14 +246,17 @@ class SubscriptionListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={subscriptions} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
-          title={() => (
-            <div>
-              {i18next.t("general:Subscriptions")}&nbsp;&nbsp;&nbsp;&nbsp;
-              <Button type="primary" size="small" onClick={this.addSubscription.bind(this)}>{i18next.t("general:Add")}</Button>
-            </div>
-          )}
-          loading={this.state.loading}
+        <Table scroll={{x: true}} columns={columns} dataSource={subscriptions} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+          title={() => {
+            const isAdmin = Setting.isLocalAdminUser(this.props.account);
+            return (
+              <div>
+                {i18next.t("general:Subscriptions")}&nbsp;&nbsp;&nbsp;&nbsp;
+                <Button type="primary" size="small" disabled={!isAdmin} onClick={this.addSubscription.bind(this)}>{i18next.t("general:Add")}</Button>
+              </div>
+            );
+          }}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

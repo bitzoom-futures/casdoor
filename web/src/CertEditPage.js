@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Row, Select} from "antd";
 import * as CertBackend from "./backend/CertBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
@@ -43,6 +44,14 @@ class CertEditPage extends React.Component {
   }
 
   getCert() {
+    if (this.state.mode === "add" && this.props.location.cert) {
+      const cert = this.props.location.cert;
+      this.setState({
+        cert: cert,
+      });
+      return;
+    }
+
     CertBackend.getCert(this.state.owner, this.state.certName)
       .then((res) => {
         if (res.data === null) {
@@ -81,6 +90,24 @@ class CertEditPage extends React.Component {
     value = this.parseCertField(key, value);
 
     const cert = this.state.cert;
+    const previousType = cert.type;
+    if (key === "type") {
+      if (value === "SSL") {
+        cert.cryptoAlgorithm = "RSA";
+        cert.certificate = "";
+        cert.privateKey = "";
+      } else if (previousType === "SSL" && value !== "SSL") {
+        // Clear SSL-specific sensitive and derived fields when leaving SSL type
+        cert.provider = "";
+        cert.account = "";
+        cert.accessKey = "";
+        cert.accessSecret = "";
+        cert.certificate = "";
+        cert.privateKey = "";
+        cert.expireTime = "";
+        cert.domainExpireTime = "";
+      }
+    }
     cert[key] = value;
     this.setState({
       cert: cert,
@@ -133,7 +160,7 @@ class CertEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("provider:Scope"), i18next.t("cert:Scope - Tooltip"))} :
+            {Setting.getLabel(i18next.t("provider:Scope"), i18next.t("provider:Scope - Tooltip"))} :
           </Col>
           <Col span={22} >
             <Select virtual={false} style={{width: "100%"}} value={this.state.cert.scope} onChange={(value => {
@@ -149,7 +176,7 @@ class CertEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("provider:Type"), i18next.t("cert:Type - Tooltip"))} :
+            {Setting.getLabel(i18next.t("general:Type"), i18next.t("general:Type - Tooltip"))} :
           </Col>
           <Col span={22} >
             <Select virtual={false} style={{width: "100%"}} value={this.state.cert.type} onChange={(value => {
@@ -157,6 +184,7 @@ class CertEditPage extends React.Component {
             })}>
               {
                 [
+                  {id: "SSL", name: "SSL"},
                   {id: "x509", name: "x509"},
                   {id: "Payment", name: "Payment"},
                 ].map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
@@ -184,7 +212,10 @@ class CertEditPage extends React.Component {
               this.updateCertField("privateKey", "");
             })}>
               {
-                [
+                (this.state.cert.type === "SSL" ? [
+                  {id: "RSA", name: "RSA"},
+                  {id: "ECC", name: "ECC"},
+                ] : [
                   {id: "RS256", name: "RS256 (RSA + SHA256)"},
                   {id: "RS384", name: "RS384 (RSA + SHA384)"},
                   {id: "RS512", name: "RS512 (RSA + SHA512)"},
@@ -194,13 +225,13 @@ class CertEditPage extends React.Component {
                   {id: "PS256", name: "PS256 (RSASSA-PSS using SHA256 and MGF1 with SHA256)"},
                   {id: "PS384", name: "PS384 (RSASSA-PSS using SHA384 and MGF1 with SHA384)"},
                   {id: "PS512", name: "PS512 (RSASSA-PSS using SHA512 and MGF1 with SHA512)"},
-                ].map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
+                ]).map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
               }
             </Select>
           </Col>
         </Row>
         {
-          this.state.cert.cryptoAlgorithm.startsWith("ES") ? null : (
+          this.state.cert.cryptoAlgorithm.startsWith("ES") || this.state.cert.type === "SSL" ? null : (
             <Row style={{marginTop: "20px"}} >
               <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
                 {Setting.getLabel(i18next.t("cert:Bit size"), i18next.t("cert:Bit size - Tooltip"))} :
@@ -219,16 +250,91 @@ class CertEditPage extends React.Component {
             </Row>
           )
         }
-        <Row style={{marginTop: "20px"}} >
-          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("cert:Expire in years"), i18next.t("cert:Expire in years - Tooltip"))} :
-          </Col>
-          <Col span={22} >
-            <InputNumber value={this.state.cert.expireInYears} onChange={value => {
-              this.updateCertField("expireInYears", value);
-            }} />
-          </Col>
-        </Row>
+        {
+          this.state.cert.type === "SSL" ? null : (
+            <Row style={{marginTop: "20px"}} >
+              <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+                {Setting.getLabel(i18next.t("cert:Expire in years"), i18next.t("cert:Expire in years - Tooltip"))} :
+              </Col>
+              <Col span={22} >
+                <InputNumber value={this.state.cert.expireInYears} onChange={value => {
+                  this.updateCertField("expireInYears", value);
+                }} />
+              </Col>
+            </Row>
+          )
+        }
+        {
+          this.state.cert.type === "SSL" ? (
+            <React.Fragment>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("general:Expire time")}:
+                </Col>
+                <Col span={22} >
+                  <Input disabled={true} value={Setting.getFormattedDate(this.state.cert.expireTime)} onChange={e => {
+                    this.updateCertField("expireTime", e.target.value);
+                  }} />
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("cert:Domain expire")}:
+                </Col>
+                <Col span={22} >
+                  <Input disabled={true} value={Setting.getFormattedDate(this.state.cert.domainExpireTime)} onChange={e => {
+                    this.updateCertField("domainExpireTime", e.target.value);
+                  }} />
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("general:Provider")}:
+                </Col>
+                <Col span={22} >
+                  <Select virtual={false} style={{width: "100%"}} value={this.state.cert.provider} onChange={(value => {this.updateCertField("provider", value);})}>
+                    {
+                      [
+                        {id: "GoDaddy", name: "GoDaddy"},
+                        {id: "Aliyun", name: "Aliyun"},
+                      ].map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
+                    }
+                  </Select>
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("cert:Account")}:
+                </Col>
+                <Col span={22} >
+                  <Input value={this.state.cert.account} onChange={e => {
+                    this.updateCertField("account", e.target.value);
+                  }} />
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("general:Access key")}:
+                </Col>
+                <Col span={22} >
+                  <Input value={this.state.cert.accessKey} onChange={e => {
+                    this.updateCertField("accessKey", e.target.value);
+                  }} />
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={2}>
+                  {i18next.t("cert:Access secret")}:
+                </Col>
+                <Col span={22} >
+                  <Input.Password value={this.state.cert.accessSecret} onChange={e => {
+                    this.updateCertField("accessSecret", e.target.value);
+                  }} />
+                </Col>
+              </Row>
+            </React.Fragment>
+          ) : null
+        }
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
             {Setting.getLabel(i18next.t("cert:Certificate"), i18next.t("cert:Certificate - Tooltip"))} :
@@ -282,12 +388,18 @@ class CertEditPage extends React.Component {
 
   submitCertEdit(exitAfterSave) {
     const cert = Setting.deepCopy(this.state.cert);
-    CertBackend.updateCert(this.state.owner, this.state.certName, cert)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? CertBackend.addCert(cert)
+      : CertBackend.updateCert(this.state.owner, this.state.certName, cert);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            owner: this.state.cert.owner,
             certName: this.state.cert.name,
+            mode: "edit",
           }, () => {
             if (exitAfterSave) {
               this.props.history.push("/certs");
@@ -298,7 +410,9 @@ class CertEditPage extends React.Component {
           });
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateCertField("name", this.state.certName);
+          if (!isAdd) {
+            this.updateCertField("name", this.state.certName);
+          }
         }
       })
       .catch(error => {
@@ -307,26 +421,16 @@ class CertEditPage extends React.Component {
   }
 
   deleteCert() {
-    CertBackend.deleteCert(this.state.cert)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/certs");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/certs");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.cert !== null ? this.renderCert() : null
+          this.state.cert !== null ? this.renderCert() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitCertEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitCertEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteCert()}>{i18next.t("general:Cancel")}</Button> : null}

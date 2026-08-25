@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Row, Select, Switch} from "antd";
 import * as ProductBackend from "./backend/ProductBackend";
 import * as Setting from "./Setting";
@@ -21,6 +22,7 @@ import {LinkOutlined} from "@ant-design/icons";
 import * as ProviderBackend from "./backend/ProviderBackend";
 import ProductBuyPage from "./ProductBuyPage";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
+import PropertyTable from "./table/propertyTable";
 
 const {Option} = Select;
 
@@ -45,6 +47,14 @@ class ProductEditPage extends React.Component {
   }
 
   getProduct() {
+    if (this.state.mode === "add" && this.props.location.product) {
+      const product = this.props.location.product;
+      this.setState({
+        product: product,
+      });
+      return;
+    }
+
     ProductBackend.getProduct(this.state.organizationName, this.state.productName)
       .then((res) => {
         if (res.data === null) {
@@ -99,13 +109,16 @@ class ProductEditPage extends React.Component {
 
   renderProduct() {
     const isCreatedByPlan = this.state.product.tag === "auto_created_product_for_plan";
+    const isViewMode = this.state.mode === "view";
     return (
       <Card size="small" title={
         <div>
-          {this.state.mode === "add" ? i18next.t("product:New Product") : i18next.t("product:Edit Product")}&nbsp;&nbsp;&nbsp;&nbsp;
-          <Button onClick={() => this.submitProductEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitProductEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deleteProduct()}>{i18next.t("general:Cancel")}</Button> : null}
+          {this.state.mode === "add" ? i18next.t("product:New Product") : (isViewMode ? i18next.t("product:View Product") : i18next.t("product:Edit Product"))}&nbsp;&nbsp;&nbsp;&nbsp;
+          {!isViewMode && (<>
+            <Button onClick={() => this.submitProductEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitProductEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deleteProduct()}>{i18next.t("general:Cancel")}</Button> : null}
+          </>)}
         </div>
       } style={(Setting.isMobile()) ? {margin: "5px"} : {}} type="inner">
         <Row style={{marginTop: "10px"}} >
@@ -113,7 +126,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Organization"), i18next.t("general:Organization - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} disabled={!Setting.isAdminUser(this.props.account) || isCreatedByPlan} value={this.state.product.owner} onChange={(value => {this.updateProductField("owner", value);})}>
+            <Select virtual={false} style={{width: "100%"}} disabled={isViewMode || !Setting.isAdminUser(this.props.account) || isCreatedByPlan} value={this.state.product.owner} onChange={(value => {this.updateProductField("owner", value);})}>
               {
                 this.state.organizations.map((organization, index) => <Option key={index} value={organization.name}>{organization.name}</Option>)
               }
@@ -125,7 +138,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Name"), i18next.t("general:Name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.product.name} disabled={isCreatedByPlan} onChange={e => {
+            <Input value={this.state.product.name} disabled={isViewMode || isCreatedByPlan} onChange={e => {
               this.updateProductField("name", e.target.value);
             }} />
           </Col>
@@ -135,7 +148,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Display name"), i18next.t("general:Display name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.product.displayName} onChange={e => {
+            <Input value={this.state.product.displayName} disabled={isViewMode} onChange={e => {
               this.updateProductField("displayName", e.target.value);
             }} />
           </Col>
@@ -150,7 +163,7 @@ class ProductEditPage extends React.Component {
                 {Setting.getLabel(i18next.t("general:URL"), i18next.t("general:URL - Tooltip"))} :
               </Col>
               <Col span={23} >
-                <Input prefix={<LinkOutlined />} value={this.state.product.image} onChange={e => {
+                <Input prefix={<LinkOutlined />} value={this.state.product.image} disabled={isViewMode} onChange={e => {
                   this.updateProductField("image", e.target.value);
                 }} />
               </Col>
@@ -169,20 +182,20 @@ class ProductEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("user:Tag"), i18next.t("product:Tag - Tooltip"))} :
+            {Setting.getLabel(i18next.t("general:Tag"), i18next.t("product:Tag - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.product.tag} disabled={isCreatedByPlan} onChange={e => {
+            <Input value={this.state.product.tag} disabled={isViewMode || isCreatedByPlan} onChange={e => {
               this.updateProductField("tag", e.target.value);
             }} />
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("product:Detail"), i18next.t("product:Detail - Tooltip"))} :
+            {Setting.getLabel(i18next.t("general:Detail"), i18next.t("product:Detail - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.product.detail} onChange={e => {
+            <Input value={this.state.product.detail} disabled={isViewMode} onChange={e => {
               this.updateProductField("detail", e.target.value);
             }} />
           </Col>
@@ -192,7 +205,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Description"), i18next.t("general:Description - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.product.description} onChange={e => {
+            <Input value={this.state.product.description} disabled={isViewMode} onChange={e => {
               this.updateProductField("description", e.target.value);
             }} />
           </Col>
@@ -202,38 +215,11 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("payment:Currency"), i18next.t("payment:Currency - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.product.currency} disabled={isCreatedByPlan} onChange={(value => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.product.currency} disabled={isViewMode || isCreatedByPlan} onChange={(value => {
               this.updateProductField("currency", value);
             })}>
               {
-                [
-                  {id: "USD", name: "USD"},
-                  {id: "CNY", name: "CNY"},
-                  {id: "EUR", name: "EUR"},
-                  {id: "JPY", name: "JPY"},
-                  {id: "GBP", name: "GBP"},
-                  {id: "AUD", name: "AUD"},
-                  {id: "CAD", name: "CAD"},
-                  {id: "CHF", name: "CHF"},
-                  {id: "HKD", name: "HKD"},
-                  {id: "SGD", name: "SGD"},
-                  {id: "BRL", name: "BRL"},
-                  {id: "PLN", name: "PLN"},
-                  {id: "KRW", name: "KRW"},
-                  {id: "INR", name: "INR"},
-                  {id: "RUB", name: "RUB"},
-                  {id: "MXN", name: "MXN"},
-                  {id: "ZAR", name: "ZAR"},
-                  {id: "TRY", name: "TRY"},
-                  {id: "SEK", name: "SEK"},
-                  {id: "NOK", name: "NOK"},
-                  {id: "DKK", name: "DKK"},
-                  {id: "THB", name: "THB"},
-                  {id: "MYR", name: "MYR"},
-                  {id: "TWD", name: "TWD"},
-                  {id: "CZK", name: "CZK"},
-                  {id: "HUF", name: "HUF"},
-                ].map((item, index) => <Option key={index} value={item.id}>{Setting.getCurrencyWithFlag(item.id)}</Option>)
+                Setting.CurrencyOptions.map((item, index) => <Option key={index} value={item.id}>{Setting.getCurrencyWithFlag(item.id)}</Option>)
               }
             </Select>
           </Col>
@@ -243,19 +229,57 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("product:Is recharge"), i18next.t("product:Is recharge - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Switch checked={this.state.product.isRecharge} onChange={value => {
+            <Switch checked={this.state.product.isRecharge} disabled={isViewMode} onChange={value => {
               this.updateProductField("isRecharge", value);
+              if (value) {
+                this.updateProductField("price", 0);
+                this.updateProductField("disableCustomRecharge", false);
+                this.updateProductField("rechargeOptions", []);
+              }
             }} />
           </Col>
         </Row>
         {
-          this.state.product.isRecharge ? null : (
+          this.state.product.isRecharge ? (
+            <>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+                  {Setting.getLabel(i18next.t("product:Disable custom amount"), i18next.t("product:Disable custom amount - Tooltip"))} :
+                </Col>
+                <Col span={1} >
+                  <Switch checked={this.state.product.disableCustomRecharge} disabled={isViewMode} onChange={value => {
+                    this.updateProductField("disableCustomRecharge", value);
+                  }} />
+                </Col>
+              </Row>
+              <Row style={{marginTop: "20px"}} >
+                <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+                  {Setting.getLabel(i18next.t("product:Recharge options"), i18next.t("product:Recharge options - Tooltip"))} :
+                </Col>
+                <Col span={22} >
+                  <Select virtual={false} mode="tags" style={{width: "100%"}}
+                    disabled={isViewMode}
+                    placeholder={i18next.t("product:Enter preset amounts")}
+                    value={(this.state.product.rechargeOptions || []).map(v => String(v))}
+                    onChange={(values => {
+                      const numbers = values
+                        .map(v => parseFloat(v))
+                        .filter(v => !isNaN(v) && v > 0)
+                        .filter((v, i, arr) => arr.indexOf(v) === i)
+                        .sort((a, b) => a - b);
+                      this.updateProductField("rechargeOptions", numbers);
+                    })}>
+                  </Select>
+                </Col>
+              </Row>
+            </>
+          ) : (
             <Row style={{marginTop: "20px"}} >
               <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-                {Setting.getLabel(i18next.t("product:Price"), i18next.t("product:Price - Tooltip"))} :
+                {Setting.getLabel(i18next.t("order:Price"), i18next.t("plan:Price - Tooltip"))} :
               </Col>
               <Col span={22} >
-                <InputNumber value={this.state.product.price} disabled={isCreatedByPlan} onChange={value => {
+                <InputNumber value={this.state.product.price} disabled={isViewMode || isCreatedByPlan} onChange={value => {
                   this.updateProductField("price", value);
                 }} />
               </Col>
@@ -266,7 +290,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("product:Quantity"), i18next.t("product:Quantity - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <InputNumber value={this.state.product.quantity} disabled={isCreatedByPlan} onChange={value => {
+            <InputNumber value={this.state.product.quantity} disabled={isViewMode || isCreatedByPlan} onChange={value => {
               this.updateProductField("quantity", value);
             }} />
           </Col>
@@ -276,7 +300,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("product:Sold"), i18next.t("product:Sold - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <InputNumber value={this.state.product.sold} disabled={isCreatedByPlan} onChange={value => {
+            <InputNumber value={this.state.product.sold} disabled={isViewMode || isCreatedByPlan} onChange={value => {
               this.updateProductField("sold", value);
             }} />
           </Col>
@@ -286,7 +310,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("product:Payment providers"), i18next.t("product:Payment providers - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} mode="multiple" style={{width: "100%"}} disabled={isCreatedByPlan} value={this.state.product.providers} onChange={(value => {this.updateProductField("providers", value);})}>
+            <Select virtual={false} mode="multiple" style={{width: "100%"}} disabled={isViewMode || isCreatedByPlan} value={this.state.product.providers} onChange={(value => {this.updateProductField("providers", value);})}>
               {
                 this.state.providers.map((provider, index) => <Option key={index} value={provider.name}>{provider.name}</Option>)
               }
@@ -295,20 +319,10 @@ class ProductEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("product:Return URL"), i18next.t("product:Return URL - Tooltip"))} :
-          </Col>
-          <Col span={22} >
-            <Input prefix={<LinkOutlined />} value={this.state.product.returnUrl} onChange={e => {
-              this.updateProductField("returnUrl", e.target.value);
-            }} />
-          </Col>
-        </Row>
-        <Row style={{marginTop: "20px"}} >
-          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
             {Setting.getLabel(i18next.t("product:Success URL"), i18next.t("product:Success URL - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input prefix={<LinkOutlined />} value={this.state.product.successUrl} onChange={e => {
+            <Input prefix={<LinkOutlined />} value={this.state.product.successUrl} disabled={isViewMode} onChange={e => {
               this.updateProductField("successUrl", e.target.value);
             }} />
           </Col>
@@ -318,7 +332,7 @@ class ProductEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:State"), i18next.t("general:State - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.product.state} onChange={(value => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.product.state} disabled={isViewMode} onChange={(value => {
               this.updateProductField("state", value);
             })}>
               {
@@ -328,6 +342,18 @@ class ProductEditPage extends React.Component {
                 ].map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
               }
             </Select>
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
+            {Setting.getLabel(i18next.t("user:Properties"), i18next.t("user:Properties - Tooltip"))} :
+          </Col>
+          <Col span={22} >
+            <PropertyTable
+              disabled={isViewMode}
+              properties={this.state.product.properties === null || this.state.product.properties === undefined ? {} : this.state.product.properties}
+              onUpdateTable={(value) => {this.updateProductField("properties", value);}}
+            />
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
@@ -360,12 +386,31 @@ class ProductEditPage extends React.Component {
 
   submitProductEdit(exitAfterSave) {
     const product = Setting.deepCopy(this.state.product);
-    ProductBackend.updateProduct(this.state.organizationName, this.state.productName, product)
+    if (!product.currency) {
+      Setting.showMessage("error", i18next.t("product:Please select a currency"));
+      return;
+    }
+    if (!product.isCreatedByPlan && (!product.providers || product.providers.length === 0)) {
+      Setting.showMessage("error", i18next.t("product:Please select at least one payment provider"));
+      return;
+    }
+    if (product.isRecharge && product.disableCustomRecharge && (!product.rechargeOptions || product.rechargeOptions.length === 0)) {
+      Setting.showMessage("error", i18next.t("product:Please add at least one recharge option when custom amount is disabled"));
+      return;
+    }
+
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? ProductBackend.addProduct(product)
+      : ProductBackend.updateProduct(this.state.organizationName, this.state.productName, product);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.product.owner,
             productName: this.state.product.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -375,7 +420,9 @@ class ProductEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateProductField("name", this.state.productName);
+          if (!isAdd) {
+            this.updateProductField("name", this.state.productName);
+          }
         }
       })
       .catch(error => {
@@ -384,30 +431,22 @@ class ProductEditPage extends React.Component {
   }
 
   deleteProduct() {
-    ProductBackend.deleteProduct(this.state.product)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/products");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/products");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.product !== null ? this.renderProduct() : null
+          this.state.product !== null ? this.renderProduct() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
-          <Button size="large" onClick={() => this.submitProductEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitProductEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteProduct()}>{i18next.t("general:Cancel")}</Button> : null}
-        </div>
+        {this.state.mode !== "view" && (
+          <div style={{margin: "20px 40px"}}>
+            <Button size="large" onClick={() => this.submitProductEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitProductEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteProduct()}>{i18next.t("general:Cancel")}</Button> : null}
+          </div>
+        )}
       </div>
     );
   }

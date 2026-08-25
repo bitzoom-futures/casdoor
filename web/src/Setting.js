@@ -13,9 +13,10 @@
 // limitations under the License.
 
 import React from "react";
+import {useEffect, useRef} from "react";
 import {Link} from "react-router-dom";
 import {Button, Select, Tag, Tooltip, message, theme} from "antd";
-import {QuestionCircleTwoTone} from "@ant-design/icons";
+import {QuestionCircleOutlined} from "@ant-design/icons";
 import {isMobile as isMobileDevice} from "react-device-detect";
 import "./i18n";
 import i18next from "i18next";
@@ -27,40 +28,35 @@ import * as phoneNumber from "libphonenumber-js";
 import moment from "moment";
 import {MfaAuthVerifyForm, NextMfa, RequiredMfa} from "./auth/mfa/MfaAuthVerifyForm";
 import {EmailMfaType, SmsMfaType, TotpMfaType} from "./auth/MfaSetupPage";
+import * as PasswordChecker from "./common/PasswordChecker";
 
 const {Option} = Select;
 
 export let ServerUrl = "http://localhost:8000";
 
-export const StaticBaseUrl = "https://cdn.casbin.org";
+export const StaticBaseUrl = Conf.StaticBaseUrl;
+
+export const MAX_PAGE_SIZE = 25;
+export const SEARCH_DEBOUNCE_MS = 300;
+
+// getPasswordPopoverOpen returns whether the password requirement popover should stay open:
+// keep it visible only while the user has typed a password that does not yet meet all requirements.
+export function getPasswordPopoverOpen(password, passwordOptions) {
+  return password.length > 0 && PasswordChecker.checkPasswordComplexity(password, passwordOptions) !== "";
+}
 
 export const Countries = [
   {label: "English", key: "en", country: "US", alt: "English"},
   {label: "Español", key: "es", country: "ES", alt: "Español"},
   {label: "Français", key: "fr", country: "FR", alt: "Français"},
   {label: "Deutsch", key: "de", country: "DE", alt: "Deutsch"},
-  {label: "中文", key: "zh", country: "CN", alt: "中文"},
-  {label: "Indonesia", key: "id", country: "ID", alt: "Indonesia"},
   {label: "日本語", key: "ja", country: "JP", alt: "日本語"},
-  {label: "한국어", key: "ko", country: "KR", alt: "한국어"},
-  {label: "Русский", key: "ru", country: "RU", alt: "Русский"},
-  {label: "TiếngViệt", key: "vi", country: "VN", alt: "TiếngViệt"},
+  {label: "中文", key: "zh", country: "CN", alt: "中文"},
+  {label: "TiếngViệt", key: "vi", country: "VN", alt: "TiếngViệt"},
   {label: "Português", key: "pt", country: "PT", alt: "Português"},
-  {label: "Italiano", key: "it", country: "IT", alt: "Italiano"},
-  {label: "Malay", key: "ms", country: "MY", alt: "Malay"},
   {label: "Türkçe", key: "tr", country: "TR", alt: "Türkçe"},
-  {label: "لغة عربية", key: "ar", country: "SA", alt: "لغة عربية"},
-  {label: "עִבְרִית", key: "he", country: "IL", alt: "עִבְרִית"},
-  {label: "Nederlands", key: "nl", country: "NL", alt: "Nederlands"},
   {label: "Polski", key: "pl", country: "PL", alt: "Polski"},
-  {label: "Suomi", key: "fi", country: "FI", alt: "Suomi"},
-  {label: "Svenska", key: "sv", country: "SE", alt: "Svenska"},
   {label: "Українська", key: "uk", country: "UA", alt: "Українська"},
-  {label: "Қазақ", key: "kk", country: "KZ", alt: "Қазақ"},
-  {label: "فارسی", key: "fa", country: "IR", alt: "فارسی"},
-  {label: "Čeština", key: "cs", country: "CZ", alt: "Čeština"},
-  {label: "Slovenčina", key: "sk", country: "SK", alt: "Slovenčina"},
-  {label: "Azərbaycan dili", key: "az", country: "AZ", alt: "Azərbaycan dili"},
 ];
 
 export function getThemeData(organization, application) {
@@ -194,6 +190,10 @@ export const OtherProviderInfo = {
       logo: `${StaticBaseUrl}/img/social_default.png`,
       url: "https://casdoor.org/docs/provider/email/overview",
     },
+    "Resend": {
+      logo: `${StaticBaseUrl}/img/email_resend.png`,
+      url: "https://resend.com/",
+    },
   },
   Storage: {
     "Local File System": {
@@ -254,6 +254,10 @@ export const OtherProviderInfo = {
       logo: `${StaticBaseUrl}/img/social_custom.png`,
       url: "https://door.casdoor.com/",
     },
+    "Custom Flexible": {
+      logo: `${StaticBaseUrl}/img/social_custom.png`,
+      url: "https://door.casdoor.com/",
+    },
   },
   Payment: {
     "Dummy": {
@@ -287,6 +291,26 @@ export const OtherProviderInfo = {
     "GC": {
       logo: `${StaticBaseUrl}/img/payment_gc.png`,
       url: "https://gc.org",
+    },
+    "Polar": {
+      logo: `${StaticBaseUrl}/img/payment_polar.png`,
+      url: "https://polar.sh/",
+    },
+    "Paddle": {
+      logo: `${StaticBaseUrl}/img/payment_paddle.png`,
+      url: "https://www.paddle.com/",
+    },
+    "FastSpring": {
+      logo: `${StaticBaseUrl}/img/payment_fastspring.png`,
+      url: "https://fastspring.com/",
+    },
+    "Lemon Squeezy": {
+      logo: `${StaticBaseUrl}/img/payment_lemonsqueezy.jpg`,
+      url: "https://www.lemonsqueezy.com/",
+    },
+    "Adyen": {
+      logo: `${StaticBaseUrl}/img/payment_adyen.svg`,
+      url: "https://www.adyen.com/",
     },
   },
   Captcha: {
@@ -426,6 +450,10 @@ export const OtherProviderInfo = {
       logo: `${StaticBaseUrl}/img/social_aliyun.png`,
       url: "https://vision.aliyun.com/facebody",
     },
+    "Local UniFace": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "https://github.com/yakhyo/uniface",
+    },
   },
   "MFA": {
     "RADIUS": {
@@ -433,7 +461,227 @@ export const OtherProviderInfo = {
       url: "",
     },
   },
+  "ID Verification": {
+    "Jumio": {
+      logo: `${StaticBaseUrl}/img/social_jumio.png`,
+      url: "https://www.jumio.com/",
+    },
+    "Alibaba Cloud": {
+      logo: `${StaticBaseUrl}/img/social_aliyun.png`,
+      url: "https://www.aliyun.com/product/idverification",
+    },
+  },
+  Log: {
+    "Casdoor Permission Log": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "https://casdoor.org",
+    },
+    "System Log": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "https://en.wikipedia.org/wiki/Syslog",
+    },
+    "Agent": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "",
+    },
+    "SELinux Log": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "https://github.com/SELinuxProject/selinux",
+    },
+  },
+  Scan: {
+    "Security Scan": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "",
+    },
+    "MCP Scan": {
+      logo: `${StaticBaseUrl}/img/social_default.png`,
+      url: "",
+    },
+  },
 };
+
+export const UserFields = ["owner", "name", "password", "display_name", "id", "type", "email", "phone", "country_code",
+  "is_admin", "homepage", "birthday", "gender", "password_type", "password_salt", "external_id", "avatar", "first_name", "last_name",
+  "avatar_type", "permanent_avatar", "email_verified", "region", "location", "address",
+  "affiliation", "title", "id_card_type", "id_card", "real_name", "is_verified", "bio", "tag", "language",
+  "education", "score", "karma", "ranking", "balance", "balance_credit", "balance_currency", "currency", "is_default_avatar", "is_online",
+  "is_forbidden", "is_deleted", "signup_application", "register_type", "register_source", "hash", "pre_hash", "access_token",
+  "created_ip", "last_signin_time", "last_signin_ip", "github", "google", "qq", "wechat", "facebook", "dingtalk",
+  "weibo", "gitee", "linkedin", "wecom", "lark", "gitlab", "adfs", "baidu", "alipay", "casdoor", "infoflow", "apple",
+  "azuread", "azureadb2c", "slack", "steam", "bilibili", "okta", "douyin", "kwai", "line", "amazon", "auth0",
+  "battlenet", "bitbucket", "box", "cloudfoundry", "dailymotion", "deezer", "digitalocean", "discord", "dropbox",
+  "eveonline", "fitbit", "gitea", "heroku", "influxcloud", "instagram", "intercom", "kakao", "lastfm", "mailru",
+  "meetup", "microsoftonline", "naver", "nextcloud", "onedrive", "oura", "patreon", "paypal", "salesforce", "shopify",
+  "soundcloud", "spotify", "strava", "stripe", "tiktok", "tumblr", "twitch", "twitter", "typetalk", "uber", "vk",
+  "wepay", "xero", "yahoo", "yammer", "yandex", "zoom", "metamask", "web3onboard", "custom", "webauthnCredentials",
+  "preferred_mfa_type", "recovery_codes", "totp_secret", "mfa_phone_enabled", "mfa_email_enabled", "invitation",
+  "invitation_code", "face_ids", "ldap", "properties", "roles", "permissions", "groups", "last_change_password_time",
+  "last_signin_wrong_time", "signin_wrong_times", "managedAccounts", "mfaAccounts", "mfaItems", "need_update_password",
+  "created_time", "updated_time", "deleted_time",
+  "ip_whitelist"];
+
+export const GroupFields = ["owner", "name", "created_time", "updated_time", "display_name", "manager",
+  "contact_email", "type", "parent_id", "is_top_group", "is_enabled"];
+
+export const RoleFields = ["owner", "name", "created_time", "display_name", "description",
+  "users", "groups", "roles", "domains", "is_enabled"];
+
+export const PermissionFields = ["owner", "name", "created_time", "display_name", "description",
+  "users", "groups", "roles", "domains", "model", "adapter", "resource_type",
+  "resources", "actions", "effect", "is_enabled", "submitter", "approver", "approve_time", "state"];
+
+export const GetTranslatedUserItems = () => {
+  return [
+    {name: "Organization", label: i18next.t("general:Organization")},
+    {name: "ID", label: i18next.t("general:ID")},
+    {name: "Name", label: i18next.t("general:Name")},
+    {name: "Display name", label: i18next.t("general:Display name")},
+    {name: "First name", label: i18next.t("general:First name")},
+    {name: "Last name", label: i18next.t("general:Last name")},
+    {name: "Avatar", label: i18next.t("general:Avatar")},
+    {name: "User type", label: i18next.t("general:User type")},
+    {name: "Password", label: i18next.t("general:Password")},
+    {name: "Email", label: i18next.t("general:Email")},
+    {name: "Phone", label: i18next.t("general:Phone")},
+    {name: "Country code", label: i18next.t("user:Country code")},
+    {name: "Country/Region", label: i18next.t("user:Country/Region")},
+    {name: "Location", label: i18next.t("user:Location")},
+    {name: "Address", label: i18next.t("user:Address")},
+    {name: "Addresses", label: i18next.t("user:Addresses")},
+    {name: "Affiliation", label: i18next.t("user:Affiliation")},
+    {name: "Title", label: i18next.t("general:Title")},
+    {name: "ID card type", label: i18next.t("user:ID card type")},
+    {name: "ID card", label: i18next.t("user:ID card")},
+    {name: "ID card info", label: i18next.t("user:ID card info")},
+    {name: "Real name", label: i18next.t("application:Real name")},
+    {name: "ID verification", label: i18next.t("user:ID verification")},
+    {name: "Homepage", label: i18next.t("user:Homepage")},
+    {name: "Bio", label: i18next.t("user:Bio")},
+    {name: "Tag", label: i18next.t("general:Tag")},
+    {name: "Language", label: i18next.t("user:Language")},
+    {name: "Gender", label: i18next.t("user:Gender")},
+    {name: "Birthday", label: i18next.t("user:Birthday")},
+    {name: "Education", label: i18next.t("user:Education")},
+    {name: "Balance", label: i18next.t("user:Balance")},
+    {name: "Balance currency", label: i18next.t("organization:Balance currency")},
+    {name: "Balance credit", label: i18next.t("organization:Balance credit")},
+    {name: "Cart", label: i18next.t("general:Cart")},
+    {name: "Transactions", label: i18next.t("general:Transactions")},
+    {name: "UID number", label: i18next.t("general:UID number")},
+    {name: "Score", label: i18next.t("user:Score")},
+    {name: "Karma", label: i18next.t("user:Karma")},
+    {name: "Ranking", label: i18next.t("user:Ranking")},
+    {name: "Signup application", label: i18next.t("general:Signup application")},
+    {name: "Register type", label: i18next.t("user:Register type")},
+    {name: "Register source", label: i18next.t("user:Register source")},
+    {name: "API key", label: i18next.t("general:API key")},
+    {name: "Groups", label: i18next.t("general:Groups")},
+    {name: "Roles", label: i18next.t("general:Roles")},
+    {name: "Permissions", label: i18next.t("general:Permissions")},
+    {name: "3rd-party logins", label: i18next.t("user:3rd-party logins")},
+    {name: "Properties", label: i18next.t("user:Properties")},
+    {name: "Is online", label: i18next.t("user:Is online")},
+    {name: "Is admin", label: i18next.t("user:Is admin")},
+    {name: "Is forbidden", label: i18next.t("user:Is forbidden")},
+    {name: "Is deleted", label: i18next.t("user:Is deleted")},
+    {name: "Need update password", label: i18next.t("user:Need update password")},
+    {name: "IP whitelist", label: i18next.t("general:IP whitelist")},
+    {name: "Multi-factor authentication", label: i18next.t("mfa:Multi-factor authentication")},
+    {name: "WebAuthn credentials", label: i18next.t("user:WebAuthn credentials")},
+    {name: "Last change password time", label: i18next.t("user:Last change password time")},
+    {name: "Managed accounts", label: i18next.t("user:Managed accounts")},
+    {name: "Face ID", label: i18next.t("login:Face ID")},
+    {name: "MFA accounts", label: i18next.t("user:MFA accounts")},
+    {name: "MFA items", label: i18next.t("general:MFA items")},
+  ];
+};
+
+export function getUserColumns() {
+  const items = GetTranslatedUserItems();
+  return UserFields.map(field => {
+    let transField = "";
+    if (field === "webauthnCredentials") {
+      transField = "WebAuthn credentials";
+    } else if (field === "region") {
+      transField = "Country/Region";
+    } else if (field === "mfaAccounts") {
+      transField = "MFA accounts";
+    } else if (field === "mfaItems") {
+      transField = "MFA items";
+    } else if (field === "face_ids") {
+      transField = "Face ID";
+    } else if (field === "managedAccounts") {
+      transField = "Managed accounts";
+    } else {
+      transField = field.toLowerCase().split("_").join(" ");
+      transField = transField.charAt(0).toUpperCase() + transField.slice(1);
+      transField = transField.replace("ip", "IP")
+        .replace("Ip", "IP")
+        .replace("Id", "ID")
+        .replace("id", "ID");
+    }
+    if (transField === "Owner") {
+      transField = "Organization";
+    }
+    const transFieldItem = items.find(item => item.name === transField);
+    if (transFieldItem === undefined) {
+      const toTranslateList = ["general", "user", "organization"].map(ns => `${ns}:${transField}`);
+      const transResult = toTranslateList.map(item => i18next.t(item) === transField ? null : i18next.t(item))
+        .find(item => item !== null);
+      transField = transResult ? transResult : transField;
+    }
+    return `${transFieldItem ? transFieldItem.label : transField}#${field}`;
+  });
+}
+
+export function getGroupColumns() {
+  return GroupFields.map(field => {
+    let transField = field.toLowerCase().split("_").join(" ");
+    transField = transField.charAt(0).toUpperCase() + transField.slice(1);
+    transField = transField.replace("Id", "ID");
+    if (transField === "Owner") {
+      transField = "Organization";
+    }
+    const toTranslateList = ["general", "group"].map(ns => `${ns}:${transField}`);
+    const transResult = toTranslateList.map(item => i18next.t(item) === transField ? null : i18next.t(item))
+      .find(item => item !== null);
+    transField = transResult ? transResult : transField;
+    return `${transField}#${field}`;
+  });
+}
+
+export function getRoleColumns() {
+  return RoleFields.map(field => {
+    let transField = field.toLowerCase().split("_").join(" ");
+    transField = transField.charAt(0).toUpperCase() + transField.slice(1);
+    transField = transField.replace("Id", "ID");
+    if (transField === "Owner") {
+      transField = "Organization";
+    }
+    const toTranslateList = ["general", "role"].map(ns => `${ns}:${transField}`);
+    const transResult = toTranslateList.map(item => i18next.t(item) === transField ? null : i18next.t(item))
+      .find(item => item !== null);
+    transField = transResult ? transResult : transField;
+    return `${transField}#${field}`;
+  });
+}
+
+export function getPermissionColumns() {
+  return PermissionFields.map(field => {
+    let transField = field.toLowerCase().split("_").join(" ");
+    transField = transField.charAt(0).toUpperCase() + transField.slice(1);
+    transField = transField.replace("Id", "ID");
+    if (transField === "Owner") {
+      transField = "Organization";
+    }
+    const toTranslateList = ["general", "permission"].map(ns => `${ns}:${transField}`);
+    const transResult = toTranslateList.map(item => i18next.t(item) === transField ? null : i18next.t(item))
+      .find(item => item !== null);
+    transField = transResult ? transResult : transField;
+    return `${transField}#${field}`;
+  });
+}
 
 export function initCountries() {
   const countries = require("i18n-iso-countries");
@@ -495,6 +743,10 @@ export function initServerUrl() {
 export function isLocalhost() {
   const hostname = window.location.hostname;
   return hostname === "localhost";
+}
+
+export function initWebConfig() {
+  Conf.initConfigFromCookie();
 }
 
 export function getFullServerUrl() {
@@ -642,7 +894,7 @@ export function hasPromptPage(application) {
   }
 
   const signupItems = getAllPromptedSignupItems(application);
-  if (signupItems?.length > 0) {
+  if (signupItems?.filter(item => item.name === "Country/Region").length > 0) {
     return true;
   }
 
@@ -707,6 +959,17 @@ export function isPromptAnswered(user, application) {
 export const MfaRuleRequired = "Required";
 export const MfaRulePrompted = "Prompted";
 export const MfaRuleOptional = "Optional";
+
+export const RequiredUpdatePassword = "RequiredUpdatePassword";
+
+export function goToUpdatePassword() {
+  // remember where the login was started from, to go back after the password is updated
+  const signinUrl = localStorage.getItem("signinUrl");
+  if (signinUrl) {
+    sessionStorage.setItem("signinUrl", signinUrl);
+  }
+  goToLink("/account");
+}
 
 export function isRequiredEnableMfa(user, organization) {
   if (!user || !organization || (!organization.mfaItems && !user.mfaItems)) {
@@ -819,6 +1082,17 @@ export function deepCopy(obj) {
   return Object.assign({}, obj);
 }
 
+// In "add" mode the object has already been created on the server before the edit page is
+// shown, so the "Cancel" button deletes it again. The deletion must use the owner and name
+// that the object was created with, otherwise renaming the object in the form would make
+// "Cancel" delete another, already existing object instead.
+export function getDeleteObj(obj, owner, name) {
+  const res = deepCopy(obj);
+  res.owner = owner;
+  res.name = name;
+  return res;
+}
+
 export function addRow(array, row, position = "end") {
   return position === "end" ? [...array, row] : [row, ...array];
 }
@@ -845,6 +1119,14 @@ export function trim(str, ch) {
   while (end > start && str[end - 1] === ch) {--end;}
 
   return (start > 0 || end < str.length) ? str.substring(start, end) : str;
+}
+
+export function getStyleInnerCss(css) {
+  if (!css) {
+    return css;
+  }
+  const match = css.match(/^\s*<style[^>]*>([\s\S]*?)<\/style>\s*$/i);
+  return match ? match[1] : css;
 }
 
 export function isMobile() {
@@ -927,7 +1209,35 @@ export function getAvatarColor(s) {
   return colorList[hash % 4];
 }
 
+export function getEffectiveAvatarUrl(user) {
+  return user.avatar || user.permanentAvatar || "";
+}
+
+export function getAvatarPlaceholder(name, size = 40) {
+  return (
+    <div style={{
+      alignItems: "center",
+      backgroundColor: getAvatarColor(name),
+      borderRadius: "50%",
+      color: "#fff",
+      display: "flex",
+      flexShrink: 0,
+      fontSize: Math.round(size * 0.44),
+      fontWeight: "bold",
+      height: size,
+      justifyContent: "center",
+      width: size,
+    }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 export function getLanguageText(text) {
+  if (!text) {
+    return "";
+  }
+
   if (!text.includes("|")) {
     return text;
   }
@@ -949,6 +1259,16 @@ export function getLanguage() {
 export function setLanguage(language) {
   localStorage.setItem("language", language);
   i18next.changeLanguage(language);
+}
+
+// The language chosen on the signin/signup page, remembered so it survives the
+// redirect through a provider and can be saved to the newly created user.
+export function setSigninLanguage(language) {
+  sessionStorage.setItem("signinLanguage", language);
+}
+
+export function getSigninLanguage() {
+  return sessionStorage.getItem("signinLanguage") ?? "";
 }
 
 export function getAcceptLanguage() {
@@ -1061,6 +1381,7 @@ export function getProviderTypeOptions(category) {
         {id: "Spotify", name: "Spotify"},
         {id: "Strava", name: "Strava"},
         {id: "Stripe", name: "Stripe"},
+        {id: "Telegram", name: "Telegram"},
         {id: "TikTok", name: "TikTok"},
         {id: "Tumblr", name: "Tumblr"},
         {id: "Twitch", name: "Twitch"},
@@ -1084,6 +1405,7 @@ export function getProviderTypeOptions(category) {
         {id: "Custom8", name: "Custom8"},
         {id: "Custom9", name: "Custom9"},
         {id: "Custom10", name: "Custom10"},
+        {id: "Custom Flexible", name: "Custom Flexible"},
       ]
     );
   } else if (category === "Email") {
@@ -1095,12 +1417,14 @@ export function getProviderTypeOptions(category) {
         {id: "Azure ACS", name: "Azure ACS"},
         {id: "SendGrid", name: "SendGrid"},
         {id: "Custom HTTP Email", name: "Custom HTTP Email"},
+        {id: "Resend", name: "Resend"},
       ]
     );
   } else if (category === "SMS") {
     return (
       [
         {id: "Aliyun SMS", name: "Alibaba Cloud SMS"},
+        {id: "Alibaba Cloud PNVS SMS", name: "Alibaba Cloud PNVS SMS"},
         {id: "Amazon SNS", name: "Amazon SNS"},
         {id: "Azure ACS", name: "Azure ACS"},
         {id: "Custom HTTP SMS", name: "Custom HTTP SMS"},
@@ -1139,6 +1463,7 @@ export function getProviderTypeOptions(category) {
       {id: "Aliyun IDaaS", name: "Aliyun IDaaS"},
       {id: "Keycloak", name: "Keycloak"},
       {id: "Custom", name: "Custom"},
+      {id: "Custom Flexible", name: "Custom Flexible"},
     ]);
   } else if (category === "Payment") {
     return ([
@@ -1150,6 +1475,11 @@ export function getProviderTypeOptions(category) {
       {id: "Stripe", name: "Stripe"},
       {id: "AirWallex", name: "AirWallex"},
       {id: "GC", name: "GC"},
+      {id: "Polar", name: "Polar"},
+      {id: "Paddle", name: "Paddle"},
+      {id: "FastSpring", name: "FastSpring"},
+      {id: "Lemon Squeezy", name: "Lemon Squeezy"},
+      {id: "Adyen", name: "Adyen"},
     ]);
   } else if (category === "Captcha") {
     return ([
@@ -1192,10 +1522,28 @@ export function getProviderTypeOptions(category) {
   } else if (category === "Face ID") {
     return ([
       {id: "Alibaba Cloud Facebody", name: "Alibaba Cloud Facebody"},
+      {id: "Local UniFace", name: "Local UniFace"},
     ]);
   } else if (category === "MFA") {
     return ([
       {id: "RADIUS", name: "RADIUS"},
+    ]);
+  } else if (category === "ID Verification") {
+    return ([
+      {id: "Jumio", name: "Jumio"},
+      {id: "Alibaba Cloud", name: "Alibaba Cloud"},
+    ]);
+  } else if (category === "Log") {
+    return ([
+      {id: "Casdoor Permission Log", name: "Casdoor Permission Log"},
+      {id: "System Log", name: "System Log"},
+      {id: "Agent", name: "Agent"},
+      {id: "SELinux Log", name: "SELinux Log"},
+    ]);
+  } else if (category === "Scan") {
+    return ([
+      {id: "Security Scan", name: "Security Scan"},
+      {id: "MCP Scan", name: "MCP Scan"},
     ]);
   } else {
     return [];
@@ -1240,6 +1588,43 @@ function isSigninMethodEnabled(application, signinMethod) {
   } else {
     return false;
   }
+}
+
+export const CaptchaRule = {
+  Always: "Always",
+  Never: "Never",
+  Dynamic: "Dynamic",
+  InternetOnly: "Internet-Only",
+};
+
+export function getCaptchaProviderItems(application) {
+  const providers = application?.providers;
+  if (!providers) {
+    return [];
+  }
+
+  return providers.filter(providerItem => providerItem?.provider?.category === "Captcha");
+}
+
+export function getCaptchaRule(application) {
+  const captchaProviderItems = getCaptchaProviderItems(application);
+  if (captchaProviderItems.some(providerItem => providerItem.rule === CaptchaRule.Always)) {
+    return CaptchaRule.Always;
+  } else if (captchaProviderItems.some(providerItem => providerItem.rule === CaptchaRule.Dynamic)) {
+    return CaptchaRule.Dynamic;
+  } else if (captchaProviderItems.some(providerItem => providerItem.rule === CaptchaRule.InternetOnly)) {
+    return CaptchaRule.InternetOnly;
+  }
+
+  return CaptchaRule.Never;
+}
+
+export function isInlineCaptchaEnabled(application) {
+  return application?.signinItems?.some(signinItem => signinItem.name === "Captcha" && signinItem.rule === "inline") || false;
+}
+
+export function isCaptchaEnabled(application) {
+  return getCaptchaRule(application) !== CaptchaRule.Never;
 }
 
 export function isPasswordEnabled(application) {
@@ -1294,7 +1679,7 @@ function renderLink(url, text, onClick) {
 
   if (url.startsWith("/")) {
     return (
-      <Link style={{float: "right"}} to={url} onClick={() => {
+      <Link className="login-link" style={{float: "right"}} to={url} onClick={() => {
         if (onClick !== null) {
           onClick();
         }
@@ -1302,7 +1687,7 @@ function renderLink(url, text, onClick) {
     );
   } else if (url.startsWith("http")) {
     return (
-      <a style={{float: "right"}} href={url} onClick={() => {
+      <a className="login-link" style={{float: "right"}} href={url} onClick={() => {
         if (onClick !== null) {
           onClick();
         }
@@ -1360,6 +1745,30 @@ export function renderForgetLink(application, text) {
   return renderLink(url, text, storeSigninUrl);
 }
 
+export function RenderCustomHtml({html}) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    // <script> tags inserted via dangerouslySetInnerHTML are not executed by the browser,
+    // so we need to re-create them manually to make embedded scripts run.
+    const oldScripts = containerRef.current.querySelectorAll("script");
+    oldScripts.forEach(oldScript => {
+      const newScript = document.createElement("script");
+      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+      newScript.textContent = oldScript.textContent;
+      oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+  }, [html]);
+
+  return (
+    <div ref={containerRef} dangerouslySetInnerHTML={{__html: html}} />
+  );
+}
+
 export function renderHelmet(application) {
   if (application === undefined || application === null || application.organizationObj === undefined || application.organizationObj === null || application.organizationObj === "") {
     return null;
@@ -1382,7 +1791,7 @@ export function getLabel(text, tooltip) {
     <React.Fragment>
       <span style={{marginRight: 4}}>{text}</span>
       <Tooltip placement="top" title={tooltip}>
-        <QuestionCircleTwoTone twoToneColor="rgb(45,120,213)" />
+        <QuestionCircleOutlined style={{color: "var(--ant-color-primary)"}} />
       </Tooltip>
     </React.Fragment>
   );
@@ -1397,6 +1806,13 @@ export function getOption(label, value) {
     label,
     value,
   };
+}
+
+// getDisplayNameOption returns an option whose value is "owner/name" and whose label is
+// "displayName (owner/name)", so that the item can be recognized by both its display name and its ID.
+export function getDisplayNameOption(item) {
+  const id = `${item.owner}/${item.name}`;
+  return getOption(item.displayName ? `${item.displayName} (${id})` : id, id);
 }
 
 export function getArrayItem(array, key, value) {
@@ -1546,6 +1962,35 @@ export function builtInObject(obj) {
   return obj.owner === "built-in" && BuiltInObjects.includes(obj.name);
 }
 
+export const CurrencyOptions = [
+  {id: "USD", name: "USD"},
+  {id: "CNY", name: "CNY"},
+  {id: "EUR", name: "EUR"},
+  {id: "JPY", name: "JPY"},
+  {id: "GBP", name: "GBP"},
+  {id: "AUD", name: "AUD"},
+  {id: "CAD", name: "CAD"},
+  {id: "CHF", name: "CHF"},
+  {id: "HKD", name: "HKD"},
+  {id: "SGD", name: "SGD"},
+  {id: "BRL", name: "BRL"},
+  {id: "PLN", name: "PLN"},
+  {id: "KRW", name: "KRW"},
+  {id: "INR", name: "INR"},
+  {id: "RUB", name: "RUB"},
+  {id: "MXN", name: "MXN"},
+  {id: "ZAR", name: "ZAR"},
+  {id: "TRY", name: "TRY"},
+  {id: "SEK", name: "SEK"},
+  {id: "NOK", name: "NOK"},
+  {id: "DKK", name: "DKK"},
+  {id: "THB", name: "THB"},
+  {id: "MYR", name: "MYR"},
+  {id: "TWD", name: "TWD"},
+  {id: "CZK", name: "CZK"},
+  {id: "HUF", name: "HUF"},
+];
+
 export function getCurrencySymbol(currency) {
   if (currency === "USD" || currency === "usd") {
     return "$";
@@ -1637,17 +2082,42 @@ export function getCurrencyCountryCode(currency) {
   return currencyToCountry[currency?.toUpperCase()] || null;
 }
 
-export function getCurrencyWithFlag(currency) {
+export function getCurrencyFlag(currency) {
   const countryCode = getCurrencyCountryCode(currency);
   if (!countryCode) {
-    return currency;
+    return null;
+  }
+
+  return (
+    <img src={`${StaticBaseUrl}/flag-icons/${countryCode}.svg`} alt={`${currency} flag`} height={20} style={{marginRight: 5}} />
+  );
+}
+
+export function getCurrencyWithFlag(currency) {
+  const translationKey = `currency:${currency}`;
+  const translatedText = i18next.t(translationKey);
+  const currencyText = translatedText === translationKey ? currency : translatedText;
+
+  const countryCode = getCurrencyCountryCode(currency);
+  if (!countryCode) {
+    return currencyText;
   }
 
   return (
     <span>
       <img src={`${StaticBaseUrl}/flag-icons/${countryCode}.svg`} alt={`${currency} flag`} height={20} style={{marginRight: 5}} />
-      {currency}
+      {currencyText}
     </span>
+  );
+}
+
+export function getPriceDisplay(price, currency) {
+  const priceValue = price || 0;
+  const currencyValue = currency || "USD";
+  return (
+    <>
+      {getCurrencyFlag(currencyValue)} {getCurrencySymbol(currencyValue)}{priceValue} ({getCurrencyText(currencyValue)})
+    </>
   );
 }
 
@@ -1663,11 +2133,21 @@ export function getFriendlyUserName(account) {
   }
 }
 
+export function isAnonymousUserName(userName) {
+  if (!userName) {
+    return false;
+  }
+
+  return /^u-[0-9a-f]{8}$/i.test(userName);
+}
+
 export function getUserCommonFields() {
-  return ["Owner", "Name", "CreatedTime", "UpdatedTime", "DeletedTime", "Id", "Type", "Password", "PasswordSalt", "DisplayName", "FirstName", "LastName", "Avatar", "PermanentAvatar",
-    "Email", "EmailVerified", "Phone", "Location", "Address", "Affiliation", "Title", "IdCardType", "IdCard", "Homepage", "Bio", "Tag", "Region",
-    "Language", "Gender", "Birthday", "Education", "Score", "Ranking", "IsDefaultAvatar", "IsOnline", "IsAdmin", "IsForbidden", "IsDeleted", "CreatedIp",
-    "PreferredMfaType", "TotpSecret", "SignupApplication", "RecoveryCodes", "MfaPhoneEnabled", "MfaEmailEnabled"];
+  return ["Owner", "Name", "CreatedTime", "UpdatedTime", "DeletedTime", "Id", "ExternalId", "Type", "Password", "PasswordSalt", "PasswordType", "DisplayName", "FirstName", "LastName", "Avatar", "AvatarType", "PermanentAvatar",
+    "Email", "EmailVerified", "Phone", "CountryCode", "Location", "Address", "Affiliation", "Title", "IdCardType", "IdCard", "RealName", "IsVerified", "Homepage", "Bio", "Tag", "Region",
+    "Language", "Gender", "Birthday", "Education", "UidNumber", "Score", "Karma", "Ranking", "Balance", "BalanceCredit", "Currency", "BalanceCurrency", "IsDefaultAvatar", "IsOnline", "IsAdmin", "IsForbidden", "IsDeleted",
+    "SignupApplication", "RegisterType", "RegisterSource", "CreatedIp", "LastSigninTime", "LastSigninIp",
+    "PreferredMfaType", "TotpSecret", "RecoveryCodes", "MfaPhoneEnabled", "MfaEmailEnabled", "MfaRadiusEnabled", "MfaRadiusUsername", "MfaRadiusProvider", "MfaPushEnabled", "MfaPushReceiver", "MfaPushProvider",
+    "WebauthnCredentials", "FaceIds", "Invitation", "InvitationCode", "Ldap", "Properties", "Groups"];
 }
 
 export function getDefaultFooterContent() {
@@ -1768,58 +2248,58 @@ export function getDefaultInvitationHtmlEmailContent() {
 </html>`;
 }
 
-export function getCurrencyText(product) {
-  if (product?.currency === "USD") {
+export function getCurrencyText(currency) {
+  if (currency === "USD") {
     return i18next.t("currency:USD");
-  } else if (product?.currency === "CNY") {
+  } else if (currency === "CNY") {
     return i18next.t("currency:CNY");
-  } else if (product?.currency === "EUR") {
+  } else if (currency === "EUR") {
     return i18next.t("currency:EUR");
-  } else if (product?.currency === "JPY") {
+  } else if (currency === "JPY") {
     return i18next.t("currency:JPY");
-  } else if (product?.currency === "GBP") {
+  } else if (currency === "GBP") {
     return i18next.t("currency:GBP");
-  } else if (product?.currency === "AUD") {
+  } else if (currency === "AUD") {
     return i18next.t("currency:AUD");
-  } else if (product?.currency === "CAD") {
+  } else if (currency === "CAD") {
     return i18next.t("currency:CAD");
-  } else if (product?.currency === "CHF") {
+  } else if (currency === "CHF") {
     return i18next.t("currency:CHF");
-  } else if (product?.currency === "HKD") {
+  } else if (currency === "HKD") {
     return i18next.t("currency:HKD");
-  } else if (product?.currency === "SGD") {
+  } else if (currency === "SGD") {
     return i18next.t("currency:SGD");
-  } else if (product?.currency === "BRL") {
+  } else if (currency === "BRL") {
     return i18next.t("currency:BRL");
-  } else if (product?.currency === "PLN") {
+  } else if (currency === "PLN") {
     return i18next.t("currency:PLN");
-  } else if (product?.currency === "KRW") {
+  } else if (currency === "KRW") {
     return i18next.t("currency:KRW");
-  } else if (product?.currency === "INR") {
+  } else if (currency === "INR") {
     return i18next.t("currency:INR");
-  } else if (product?.currency === "RUB") {
+  } else if (currency === "RUB") {
     return i18next.t("currency:RUB");
-  } else if (product?.currency === "MXN") {
+  } else if (currency === "MXN") {
     return i18next.t("currency:MXN");
-  } else if (product?.currency === "ZAR") {
+  } else if (currency === "ZAR") {
     return i18next.t("currency:ZAR");
-  } else if (product?.currency === "TRY") {
+  } else if (currency === "TRY") {
     return i18next.t("currency:TRY");
-  } else if (product?.currency === "SEK") {
+  } else if (currency === "SEK") {
     return i18next.t("currency:SEK");
-  } else if (product?.currency === "NOK") {
+  } else if (currency === "NOK") {
     return i18next.t("currency:NOK");
-  } else if (product?.currency === "DKK") {
+  } else if (currency === "DKK") {
     return i18next.t("currency:DKK");
-  } else if (product?.currency === "THB") {
+  } else if (currency === "THB") {
     return i18next.t("currency:THB");
-  } else if (product?.currency === "MYR") {
+  } else if (currency === "MYR") {
     return i18next.t("currency:MYR");
-  } else if (product?.currency === "TWD") {
+  } else if (currency === "TWD") {
     return i18next.t("currency:TWD");
-  } else if (product?.currency === "CZK") {
+  } else if (currency === "CZK") {
     return i18next.t("currency:CZK");
-  } else if (product?.currency === "HUF") {
+  } else if (currency === "HUF") {
     return i18next.t("currency:HUF");
   } else {
     return "(Unknown currency)";
@@ -1840,7 +2320,9 @@ function getPreferredMfaProp(mfaProps) {
 }
 
 export function checkLoginMfa(res, body, params, handleLogin, componentThis, requireRedirect = null) {
-  if (res.data === RequiredMfa) {
+  if (res.data === RequiredUpdatePassword) {
+    goToUpdatePassword();
+  } else if (res.data === RequiredMfa) {
     if (!requireRedirect) {
       componentThis.props.onLoginSuccess(window.location.href);
     } else {
@@ -1927,7 +2409,7 @@ export function renderLoginPanel(application, getInnerComponent, componentThis) 
       {inIframe() || !isMobile() ? null : <div dangerouslySetInnerHTML={{__html: application.formCssMobile}} />}
       <div className={isDarkTheme(componentThis.props.themeAlgorithm) ? "login-panel-dark" : "login-panel"}>
         <div className="side-image" style={{display: application.formOffset !== 4 ? "none" : null}}>
-          <div dangerouslySetInnerHTML={{__html: application.formSideHtml}} />
+          <RenderCustomHtml html={application.formSideHtml} />
         </div>
         <div className="login-form">
           <div>
@@ -1965,7 +2447,7 @@ export function createFormAndSubmit(url, params) {
 export function getFormTypeOptions() {
   return [
     {id: "users", name: "general:Users"},
-    {id: "providers", name: "general:Providers"},
+    {id: "providers", name: "application:Providers"},
     {id: "applications", name: "general:Applications"},
     {id: "organizations", name: "general:Organizations"},
   ];
@@ -1985,7 +2467,7 @@ export function getFormTypeItems(formType) {
       {name: "affiliation", label: "user:Affiliation", visible: true, width: "140"},
       {name: "region", label: "user:Country/Region", visible: true, width: "140"},
       {name: "type", label: "general:User type", visible: true, width: "120"},
-      {name: "tag", label: "user:Tag", visible: true, width: "110"},
+      {name: "tag", label: "general:Tag", visible: true, width: "110"},
       {name: "isAdmin", label: "user:Is admin", visible: true, width: "120"},
       {name: "isForbidden", label: "user:Is forbidden", visible: true, width: "110"},
       {name: "isDeleted", label: "user:Is deleted", visible: true, width: "110"},
@@ -1996,8 +2478,8 @@ export function getFormTypeItems(formType) {
       {name: "owner", label: "general:Organization", visible: true, width: "150"},
       {name: "createdTime", label: "general:Created time", visible: true, width: "180"},
       {name: "displayName", label: "general:Display name", visible: true, width: "150"},
-      {name: "category", label: "provider:Category", visible: true, width: "110"},
-      {name: "type", label: "provider:Type", visible: true, width: "110"},
+      {name: "category", label: "general:Category", visible: true, width: "110"},
+      {name: "type", label: "general:Type", visible: true, width: "110"},
       {name: "clientId", label: "provider:Client ID", visible: true, width: "100"},
       {name: "providerUrl", label: "provider:Provider URL", visible: true, width: "150"},
     ];
@@ -2008,7 +2490,7 @@ export function getFormTypeItems(formType) {
       {name: "displayName", label: "general:Display name", visible: true, width: "150"},
       {name: "logo", label: "Logo", visible: true, width: "200"},
       {name: "organization", label: "general:Organization", visible: true, width: "150"},
-      {name: "providers", label: "general:Providers", visible: true, width: "500"},
+      {name: "providers", label: "application:Providers", visible: true, width: "500"},
     ];
   } else if (formType === "organizations") {
     return [
@@ -2056,8 +2538,16 @@ export function filterTableColumns(columns, formItems, actionKey = "op") {
 }
 
 export function getApiPaths() {
-  const objects = ["organization", "group", "user", "application", "provider", "resource", "cert", "role", "permission", "model", "adapter", "enforcer", "session", "record", "token", "product", "payment", "plan", "pricing", "subscription", "syncer", "webhook"];
+  const objects = ["organization", "group", "user", "application", "provider", "resource", "cert", "role", "permission", "model", "adapter", "enforcer", "session", "token", "product", "payment", "plan", "pricing", "subscription", "syncer", "webhook", "form", "invitation", "ldap", "order", "ticket", "transaction"];
   const res = [];
+
+  // Auth and user session APIs
+  res.push("signup", "login", "logout", "sso-logout", "unlink");
+  res.push("new-user"); // Custom event for new user creation
+  res.push("new-user-ldap"); // Custom event for new user creation via LDAP sync
+  res.push("new-user-syncer"); // Custom event for new user creation via syncer
+
+  // CRUD operations for objects
   objects.forEach(obj => {
     ["add", "update", "delete"].forEach(action => {
       res.push(`${action}-${obj}`);
@@ -2065,9 +2555,118 @@ export function getApiPaths() {
     if (obj === "payment") {
       res.push("invoice-payment", "notify-payment");
     }
-    if (obj === "product") {
-      res.push("buy-product");
+    if (obj === "order") {
+      res.push("place-order", "cancel-order", "pay-order");
+    }
+    if (obj === "user") {
+      res.push("remove-user-from-group", "upload-users");
+      res.push("check-user-password", "set-password", "reset-email-or-phone");
+      res.push("verify-identification");
+    }
+    if (obj === "group") {
+      res.push("upload-groups");
+    }
+    if (obj === "role") {
+      res.push("upload-roles");
+    }
+    if (obj === "permission") {
+      res.push("upload-permissions");
+    }
+    if (obj === "resource") {
+      res.push("upload-resource");
+    }
+    if (obj === "invitation") {
+      res.push("send-invitation", "verify-invitation");
+    }
+    if (obj === "ticket") {
+      res.push("add-ticket-message");
+    }
+    if (obj === "syncer") {
+      res.push("run-syncer", "test-syncer-db");
+    }
+    if (obj === "ldap") {
+      res.push("sync-ldap-users");
+    }
+    if (obj === "enforcer") {
+      res.push("enforce", "batch-enforce");
+    }
+    if (obj === "session") {
+      res.push("is-session-duplicated");
     }
   });
+
+  // Special cases that don't follow the standard pattern
+  res.push("add-policy", "update-policy", "remove-policy");
+  res.push("add-record");
+  res.push("delete-mfa", "set-preferred-mfa");
+
+  // MFA setup APIs
+  res.push("mfa/setup/initiate", "mfa/setup/verify", "mfa/setup/enable");
+
+  // WebAuthn APIs
+  res.push("webauthn/signup/begin", "webauthn/signup/finish");
+  res.push("webauthn/signin/begin", "webauthn/signin/finish");
+
+  // OAuth APIs
+  res.push("login/oauth/access_token", "login/oauth/refresh_token", "login/oauth/introspect");
+
+  // Verification and communication APIs
+  res.push("send-verification-code", "verify-code", "verify-captcha");
+  res.push("send-email", "send-sms", "send-notification");
+
+  // SAML APIs
+  res.push("acs", "saml/metadata");
+
+  // Casbin engine APIs
+  res.push("run-casbin-command", "refresh-engines");
+
+  // Monitoring and health APIs
+  res.push("health", "metrics");
+
+  // Other APIs
+  res.push("callback", "device-auth", "faceid-signin-begin");
+  res.push("user", "userinfo");
+
   return res;
+}
+
+export function getItemId(item) {
+  return item.owner + "/" + item.name;
+}
+
+export function getVersionInfo(text, siteName) {
+  if (text === "") {
+    return null;
+  }
+
+  try {
+    const versionInfo = JSON.parse(text);
+    const link = versionInfo?.version !== "" ? `${getRepoUrl(siteName)}/releases/tag/${versionInfo?.version}` : "";
+    let versionText = versionInfo?.version !== "" ? versionInfo?.version : "Unknown version";
+    if (versionInfo?.commitOffset > 0) {
+      versionText += ` (ahead+${versionInfo?.commitOffset})`;
+    }
+
+    return {text: versionText, link: link};
+  } catch (e) {
+    return {text: "", link: ""};
+  }
+}
+
+function getOriginalName(name) {
+  const tokens = name.split("_");
+  if (tokens.length > 0) {
+    return tokens[0];
+  } else {
+    return name;
+  }
+}
+
+export function getRepoUrl(name) {
+  name = getOriginalName(name);
+  if (name === "casdoor") {
+    return "https://github.com/casdoor/casdoor";
+  } else {
+    return `https://github.com/casbin/${name}`;
+  }
 }

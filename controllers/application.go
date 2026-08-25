@@ -17,8 +17,9 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
-	"github.com/beego/beego/utils/pagination"
+	"github.com/beego/beego/v2/core/utils/pagination"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
 )
@@ -32,14 +33,14 @@ import (
 // @router /get-applications [get]
 func (c *ApiController) GetApplications() {
 	userId := c.GetSessionUsername()
-	owner := c.Input().Get("owner")
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
-	organization := c.Input().Get("organization")
+	owner := c.Ctx.Input.Query("owner")
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
+	organization := c.Ctx.Input.Query("organization")
 	var err error
 	if limit == "" || page == "" {
 		var applications []*object.Application
@@ -61,7 +62,7 @@ func (c *ApiController) GetApplications() {
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
 		application, err := object.GetPaginationApplications(owner, paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
@@ -82,7 +83,7 @@ func (c *ApiController) GetApplications() {
 // @router /get-application [get]
 func (c *ApiController) GetApplication() {
 	userId := c.GetSessionUsername()
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	application, err := object.GetApplication(id)
 	if err != nil {
@@ -90,7 +91,7 @@ func (c *ApiController) GetApplication() {
 		return
 	}
 
-	if c.Input().Get("withKey") != "" && application != nil && application.Cert != "" {
+	if c.Ctx.Input.Query("withKey") != "" && application != nil && application.Cert != "" {
 		cert, err := object.GetCert(util.GetId(application.Owner, application.Cert))
 		if err != nil {
 			c.ResponseError(err.Error())
@@ -125,7 +126,7 @@ func (c *ApiController) GetApplication() {
 // @router /get-user-application [get]
 func (c *ApiController) GetUserApplication() {
 	userId := c.GetSessionUsername()
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	user, err := object.GetUser(id)
 	if err != nil {
@@ -159,14 +160,14 @@ func (c *ApiController) GetUserApplication() {
 // @router /get-organization-applications [get]
 func (c *ApiController) GetOrganizationApplications() {
 	userId := c.GetSessionUsername()
-	organization := c.Input().Get("organization")
-	owner := c.Input().Get("owner")
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
+	organization := c.Ctx.Input.Query("organization")
+	owner := c.Ctx.Input.Query("owner")
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
 
 	if organization == "" {
 		c.ResponseError(c.T("general:Missing parameter") + ": organization")
@@ -196,7 +197,7 @@ func (c *ApiController) GetOrganizationApplications() {
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
 		applications, err := object.GetPaginationOrganizationApplications(owner, organization, paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
@@ -223,7 +224,8 @@ func (c *ApiController) GetOrganizationApplications() {
 // @Success 200 {object} controllers.Response The Response object
 // @router /update-application [post]
 func (c *ApiController) UpdateApplication() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
+	columnsStr := c.Ctx.Input.Query("columns")
 
 	var application object.Application
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &application)
@@ -237,7 +239,14 @@ func (c *ApiController) UpdateApplication() {
 		return
 	}
 
-	c.Data["json"] = wrapActionResponse(object.UpdateApplication(id, &application, c.IsGlobalAdmin(), c.GetAcceptLanguage()))
+	columns := []string{}
+	if columnsStr != "" {
+		for _, col := range strings.Split(columnsStr, ",") {
+			columns = append(columns, util.CamelToSnakeCase(col))
+		}
+	}
+
+	c.Data["json"] = wrapActionResponse(object.UpdateApplication(id, &application, c.IsGlobalAdmin(), c.GetAcceptLanguage(), columns))
 	c.ServeJSON()
 }
 
@@ -270,6 +279,26 @@ func (c *ApiController) AddApplication() {
 	if err = object.CheckIpWhitelist(application.IpWhitelist, c.GetAcceptLanguage()); err != nil {
 		c.ResponseError(err.Error())
 		return
+	}
+
+	if len(application.GrantTypes) == 0 {
+		application.GrantTypes = []string{"authorization_code"}
+	}
+
+	if application.Tags == nil {
+		application.Tags = []string{}
+	}
+
+	if application.RedirectUris == nil {
+		application.RedirectUris = []string{}
+	}
+
+	if application.Providers == nil {
+		application.Providers = []*object.ProviderItem{}
+	}
+
+	if application.Scopes == nil {
+		application.Scopes = []*object.ScopeItem{}
 	}
 
 	c.Data["json"] = wrapActionResponse(object.AddApplication(&application))

@@ -13,11 +13,12 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Row, Select, Switch} from "antd";
+import PaginateSelect from "./common/PaginateSelect";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
 import * as RoleBackend from "./backend/RoleBackend";
 import * as PlanBackend from "./backend/PlanBackend";
-import * as UserBackend from "./backend/UserBackend";
 import * as ProviderBackend from "./backend/ProviderBackend";
 import * as Setting from "./Setting";
 import i18next from "i18next";
@@ -46,6 +47,16 @@ class PlanEditPage extends React.Component {
   }
 
   getPlan() {
+    if (this.state.mode === "add" && this.props.location.plan) {
+      const plan = this.props.location.plan;
+      this.setState({
+        plan: plan,
+      });
+
+      this.getPaymentProviders(this.state.organizationName);
+      return;
+    }
+
     PlanBackend.getPlan(this.state.organizationName, this.state.planName)
       .then((res) => {
         if (res.data === null) {
@@ -57,37 +68,7 @@ class PlanEditPage extends React.Component {
           plan: res.data,
         });
 
-        this.getUsers(this.state.organizationName);
-        this.getRoles(this.state.organizationName);
         this.getPaymentProviders(this.state.organizationName);
-      });
-  }
-
-  getRoles(organizationName) {
-    RoleBackend.getRoles(organizationName)
-      .then((res) => {
-        if (res.status === "error") {
-          Setting.showMessage("error", res.msg);
-          return;
-        }
-
-        this.setState({
-          roles: res.data,
-        });
-      });
-  }
-
-  getUsers(organizationName) {
-    UserBackend.getUsers(organizationName)
-      .then((res) => {
-        if (res.status === "error") {
-          Setting.showMessage("error", res.msg);
-          return;
-        }
-
-        this.setState({
-          users: res.data,
-        });
       });
   }
 
@@ -132,13 +113,16 @@ class PlanEditPage extends React.Component {
   }
 
   renderPlan() {
+    const isViewMode = this.state.mode === "view";
     return (
       <Card size="small" title={
         <div>
-          {this.state.mode === "add" ? i18next.t("plan:New Plan") : i18next.t("plan:Edit Plan")}&nbsp;&nbsp;&nbsp;&nbsp;
-          <Button onClick={() => this.submitPlanEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitPlanEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deletePlan()}>{i18next.t("general:Cancel")}</Button> : null}
+          {this.state.mode === "add" ? i18next.t("plan:New Plan") : (isViewMode ? i18next.t("plan:View Plan") : i18next.t("plan:Edit Plan"))}&nbsp;&nbsp;&nbsp;&nbsp;
+          {!isViewMode && (<>
+            <Button onClick={() => this.submitPlanEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitPlanEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deletePlan()}>{i18next.t("general:Cancel")}</Button> : null}
+          </>)}
         </div>
       } style={(Setting.isMobile()) ? {margin: "5px"} : {}} type="inner">
         <Row style={{marginTop: "10px"}} >
@@ -146,10 +130,9 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Organization"), i18next.t("general:Organization - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.owner} onChange={(owner => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.owner} disabled={isViewMode} onChange={(owner => {
               this.updatePlanField("owner", owner);
-              this.getUsers(owner);
-              this.getRoles(owner);
+              this.getPaymentProviders(owner);
             })}
             options={this.state.organizations.map((organization) => Setting.getOption(organization.name, organization.name))
             } />
@@ -160,7 +143,7 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Name"), i18next.t("general:Name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.plan.name} onChange={e => {
+            <Input value={this.state.plan.name} disabled={isViewMode} onChange={e => {
               this.updatePlanField("name", e.target.value);
             }} />
           </Col>
@@ -170,7 +153,7 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Display name"), i18next.t("general:Display name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.plan.displayName} onChange={e => {
+            <Input value={this.state.plan.displayName} disabled={isViewMode} onChange={e => {
               this.updatePlanField("displayName", e.target.value);
             }} />
           </Col>
@@ -180,9 +163,22 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Role"), i18next.t("general:Role - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.role} onChange={(value => {this.updatePlanField("role", value);})}
-              options={this.state.roles.map((role) => Setting.getOption(role.name, role.name))
-              } />
+            <PaginateSelect
+              virtual
+              style={{width: "100%"}}
+              value={this.state.plan.role}
+              disabled={isViewMode}
+              allowClear
+              fetchPage={RoleBackend.getRoles}
+              buildFetchArgs={({page, pageSize, searchText}) => {
+                const field = searchText ? "name" : "";
+                return [this.state.plan.owner, page, pageSize, field, searchText, "", ""];
+              }}
+              reloadKey={this.state.plan.owner}
+              optionMapper={(role) => Setting.getOption(role.name, role.name)}
+              filterOption={false}
+              onChange={(value => {this.updatePlanField("role", value || "");})}
+            />
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
@@ -190,17 +186,17 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Description"), i18next.t("general:Description - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.plan.description} onChange={e => {
+            <Input value={this.state.plan.description} disabled={isViewMode} onChange={e => {
               this.updatePlanField("description", e.target.value);
             }} />
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
           <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-            {Setting.getLabel(i18next.t("plan:Price"), i18next.t("plan:Price - Tooltip"))} :
+            {Setting.getLabel(i18next.t("order:Price"), i18next.t("plan:Price - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <InputNumber value={this.state.plan.price} onChange={value => {
+            <InputNumber value={this.state.plan.price} disabled={isViewMode} onChange={value => {
               this.updatePlanField("price", value);
             }} />
           </Col>
@@ -210,7 +206,7 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("plan:Period"), i18next.t("plan:Period - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.period} onChange={value => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.period} disabled={isViewMode} onChange={value => {
               this.updatePlanField("period", value);
             }}
             options={[
@@ -225,38 +221,11 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("payment:Currency"), i18next.t("payment:Currency - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.currency} onChange={(value => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.plan.currency} disabled={isViewMode} onChange={(value => {
               this.updatePlanField("currency", value);
             })}>
               {
-                [
-                  {id: "USD", name: "USD"},
-                  {id: "CNY", name: "CNY"},
-                  {id: "EUR", name: "EUR"},
-                  {id: "JPY", name: "JPY"},
-                  {id: "GBP", name: "GBP"},
-                  {id: "AUD", name: "AUD"},
-                  {id: "CAD", name: "CAD"},
-                  {id: "CHF", name: "CHF"},
-                  {id: "HKD", name: "HKD"},
-                  {id: "SGD", name: "SGD"},
-                  {id: "BRL", name: "BRL"},
-                  {id: "PLN", name: "PLN"},
-                  {id: "KRW", name: "KRW"},
-                  {id: "INR", name: "INR"},
-                  {id: "RUB", name: "RUB"},
-                  {id: "MXN", name: "MXN"},
-                  {id: "ZAR", name: "ZAR"},
-                  {id: "TRY", name: "TRY"},
-                  {id: "SEK", name: "SEK"},
-                  {id: "NOK", name: "NOK"},
-                  {id: "DKK", name: "DKK"},
-                  {id: "THB", name: "THB"},
-                  {id: "MYR", name: "MYR"},
-                  {id: "TWD", name: "TWD"},
-                  {id: "CZK", name: "CZK"},
-                  {id: "HUF", name: "HUF"},
-                ].map((item, index) => <Option key={index} value={item.id}>{item.name}</Option>)
+                Setting.CurrencyOptions.map((item, index) => <Option key={index} value={item.id}>{Setting.getCurrencyWithFlag(item.id)}</Option>)
               }
             </Select>
           </Col>
@@ -266,7 +235,7 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("product:Payment providers"), i18next.t("product:Payment providers - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} mode="multiple" style={{width: "100%"}} value={this.state.plan.paymentProviders ?? []} onChange={(value => {this.updatePlanField("paymentProviders", value);})}>
+            <Select virtual={false} mode="multiple" style={{width: "100%"}} value={this.state.plan.paymentProviders ?? []} disabled={isViewMode} onChange={(value => {this.updatePlanField("paymentProviders", value);})}>
               {
                 this.state.paymentProviders.map((provider, index) => <Option key={index} value={provider.name}>{provider.name}</Option>)
               }
@@ -278,8 +247,18 @@ class PlanEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Is enabled"), i18next.t("general:Is enabled - Tooltip"))} :
           </Col>
           <Col span={1} >
-            <Switch checked={this.state.plan.isEnabled} onChange={checked => {
+            <Switch checked={this.state.plan.isEnabled} disabled={isViewMode} onChange={checked => {
               this.updatePlanField("isEnabled", checked);
+            }} />
+          </Col>
+        </Row>
+        <Row style={{marginTop: "20px"}} >
+          <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 19 : 2}>
+            {Setting.getLabel(i18next.t("plan:Is exclusive"), i18next.t("plan:Is exclusive - Tooltip"))} :
+          </Col>
+          <Col span={1} >
+            <Switch checked={this.state.plan.isExclusive} disabled={isViewMode} onChange={checked => {
+              this.updatePlanField("isExclusive", checked);
             }} />
           </Col>
         </Row>
@@ -289,12 +268,23 @@ class PlanEditPage extends React.Component {
 
   submitPlanEdit(exitAfterSave) {
     const plan = Setting.deepCopy(this.state.plan);
-    PlanBackend.updatePlan(this.state.organizationName, this.state.planName, plan)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? PlanBackend.addPlan(plan)
+      : PlanBackend.updatePlan(this.state.organizationName, this.state.planName, plan);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.plan.owner,
             planName: this.state.plan.name,
+            mode: "edit",
+          }, () => {
+            if (isAdd && !exitAfterSave) {
+              // the related product is created by the server, so the plan has to be reloaded to pick it up
+              this.getPlan();
+            }
           });
 
           if (exitAfterSave) {
@@ -304,7 +294,9 @@ class PlanEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updatePlanField("name", this.state.planName);
+          if (!isAdd) {
+            this.updatePlanField("name", this.state.planName);
+          }
         }
       })
       .catch(error => {
@@ -313,30 +305,22 @@ class PlanEditPage extends React.Component {
   }
 
   deletePlan() {
-    PlanBackend.deletePlan(this.state.plan)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/plans");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/plans");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.plan !== null ? this.renderPlan() : null
+          this.state.plan !== null ? this.renderPlan() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
-          <Button size="large" onClick={() => this.submitPlanEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitPlanEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deletePlan()}>{i18next.t("general:Cancel")}</Button> : null}
-        </div>
+        {this.state.mode !== "view" && (
+          <div style={{margin: "20px 40px"}}>
+            <Button size="large" onClick={() => this.submitPlanEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitPlanEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deletePlan()}>{i18next.t("general:Cancel")}</Button> : null}
+          </div>
+        )}
       </div>
     );
   }

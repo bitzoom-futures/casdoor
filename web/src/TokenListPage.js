@@ -17,6 +17,7 @@ import {Link} from "react-router-dom";
 import {Button, Table} from "antd";
 import moment from "moment";
 import * as Setting from "./Setting";
+import * as Conf from "./Conf";
 import * as TokenBackend from "./backend/TokenBackend";
 import i18next from "i18next";
 import BaseListPage from "./BaseListPage";
@@ -30,7 +31,7 @@ class TokenListPage extends BaseListPage {
       owner: "admin", // this.props.account.tokenname,
       name: `token_${randomName}`,
       createdTime: moment().format(),
-      application: "app-built-in",
+      application: Conf.DefaultApplication,
       organization: organizationName,
       user: "admin",
       accessToken: "",
@@ -42,18 +43,7 @@ class TokenListPage extends BaseListPage {
 
   addToken() {
     const newToken = this.newToken();
-    TokenBackend.addToken(newToken)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/tokens/${newToken.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/tokens/${newToken.name}`, mode: "add", token: newToken});
   }
 
   deleteToken(i) {
@@ -108,7 +98,7 @@ class TokenListPage extends BaseListPage {
         title: i18next.t("general:Application"),
         dataIndex: "application",
         key: "application",
-        width: "120px",
+        width: "130px",
         sorter: true,
         ...this.getColumnSearchProps("application"),
         render: (text, record, index) => {
@@ -123,7 +113,7 @@ class TokenListPage extends BaseListPage {
         title: i18next.t("general:Organization"),
         dataIndex: "organization",
         key: "organization",
-        width: "120px",
+        width: "140px",
         sorter: true,
         ...this.getColumnSearchProps("organization"),
         render: (text, record, index) => {
@@ -232,7 +222,7 @@ class TokenListPage extends BaseListPage {
               <Button type="primary" size="small" onClick={this.addToken.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, Row, Select} from "antd";
 import * as FormBackend from "./backend/FormBackend";
 import * as Setting from "./Setting";
@@ -33,6 +34,7 @@ class FormEditPage extends React.Component {
       formName: props.match.params.formName,
       form: null,
       formItems: [],
+      mode: props.location.mode !== undefined ? props.location.mode : "edit",
     };
   }
 
@@ -41,6 +43,13 @@ class FormEditPage extends React.Component {
   }
 
   getForm() {
+    if (this.state.mode === "add" && this.props.location.form) {
+      this.setState({
+        form: this.props.location.form,
+      });
+      return;
+    }
+
     FormBackend.getForm(this.props.account.owner, this.state.formName)
       .then((res) => {
         if (res.status === "ok") {
@@ -49,6 +58,10 @@ class FormEditPage extends React.Component {
           });
         }
       });
+  }
+
+  deleteForm() {
+    this.props.history.push("/forms");
   }
 
   updateFormField(key, value) {
@@ -63,10 +76,11 @@ class FormEditPage extends React.Component {
     return (
       <Card size="small" title={
         <div>
-          {i18next.t("form:Edit Form")}&nbsp;&nbsp;&nbsp;&nbsp;
+          {this.state.mode === "add" ? i18next.t("form:New Form") : i18next.t("form:Edit Form")}&nbsp;&nbsp;&nbsp;&nbsp;
           <Button onClick={() => this.submitFormEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary"
             onClick={() => this.submitFormEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deleteForm()}>{i18next.t("general:Cancel")}</Button> : null}
         </div>
       } style={{marginLeft: "5px"}} type="inner">
         <Row style={{marginTop: "10px"}}>
@@ -115,7 +129,7 @@ class FormEditPage extends React.Component {
         </Row>
         <Row style={{marginTop: "20px"}}>
           <Col style={{marginTop: "5px"}} span={Setting.isMobile() ? 22 : 2}>
-            {Setting.getLabel(i18next.t("user:Tag"), i18next.t("user:Tag - Tooltip"))} :
+            {Setting.getLabel(i18next.t("general:Tag"), i18next.t("product:Tag - Tooltip"))} :
           </Col>
           <Col span={22}>
             <Input value={this.state.form.tag} onChange={e => {
@@ -180,13 +194,18 @@ class FormEditPage extends React.Component {
 
   submitFormEdit(exitAfterSave) {
     const form = Setting.deepCopy(this.state.form);
-    FormBackend.updateForm(this.state.form.owner, this.state.formName, form)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? FormBackend.addForm(form)
+      : FormBackend.updateForm(this.state.form.owner, this.state.formName, form);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           if (res.data) {
             Setting.showMessage("success", i18next.t("general:Successfully saved"));
             this.setState({
               formName: this.state.form.name,
+              mode: "edit",
             });
             if (exitAfterSave) {
               this.props.history.push("/forms");
@@ -195,7 +214,9 @@ class FormEditPage extends React.Component {
             }
           } else {
             Setting.showMessage("error", i18next.t("general:Failed to save"));
-            this.updateFormField("name", this.state.formName);
+            if (!isAdd) {
+              this.updateFormField("name", this.state.formName);
+            }
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
@@ -210,12 +231,13 @@ class FormEditPage extends React.Component {
     return (
       <div>
         {
-          this.state.form !== null ? this.renderForm() : null
+          this.state.form !== null ? this.renderForm() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitFormEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large"
             onClick={() => this.submitFormEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteForm()}>{i18next.t("general:Cancel")}</Button> : null}
         </div>
       </div>
     );

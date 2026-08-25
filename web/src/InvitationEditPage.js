@@ -13,12 +13,14 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Modal, Row, Select, Table} from "antd";
 import {CopyOutlined} from "@ant-design/icons";
 import * as InvitationBackend from "./backend/InvitationBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
 import * as ApplicationBackend from "./backend/ApplicationBackend";
 import * as Setting from "./Setting";
+import * as Conf from "./Conf";
 import i18next from "i18next";
 import copy from "copy-to-clipboard";
 import * as GroupBackend from "./backend/GroupBackend";
@@ -49,6 +51,14 @@ class InvitationEditPage extends React.Component {
   }
 
   getInvitation() {
+    if (this.state.mode === "add" && this.props.location.invitation) {
+      const invitation = this.props.location.invitation;
+      this.setState({
+        invitation: invitation,
+      });
+      return;
+    }
+
     InvitationBackend.getInvitation(this.state.organizationName, this.state.invitationName)
       .then((res) => {
         if (res.data === null) {
@@ -111,7 +121,7 @@ class InvitationEditPage extends React.Component {
   copySignupLink() {
     let defaultApplication;
     if (this.state.invitation.owner === "built-in") {
-      defaultApplication = "app-built-in";
+      defaultApplication = Conf.DefaultApplication;
     } else {
       const selectedOrganization = Setting.getArrayItem(this.state.organizations, "name", this.state.invitation.owner);
       defaultApplication = selectedOrganization.defaultApplication;
@@ -139,10 +149,14 @@ class InvitationEditPage extends React.Component {
         <Button key={1} loading={this.state.sendLoading} type="primary"
           onClick={() => {
             this.setState({sendLoading: true});
-            InvitationBackend.sendInvitation(this.state.invitation, emails).then(() => {
+            InvitationBackend.sendInvitation(this.state.invitation, emails).then((res) => {
               this.setState({sendLoading: false});
+              if (res.status === "error") {
+                Setting.showMessage("error", res.msg);
+                return;
+              }
               Setting.showMessage("success", i18next.t("general:Successfully sent"));
-            }).catch(err => Setting.showMessage("success", err.message));
+            }).catch(err => Setting.showMessage("error", err.message));
           }}>{i18next.t("general:Send")}</Button>,
       ]}
       onCancel={() => {this.setState({showSendModal: false});}}>
@@ -237,7 +251,8 @@ class InvitationEditPage extends React.Component {
             <Input.TextArea autoSize={{minRows: 3, maxRows: 10}} value={this.state.emails} onChange={(value) => {
               this.setState({emails: value.target.value});
             }}></Input.TextArea>
-            <Button type="primary" style={{marginTop: "20px"}} onClick={() => this.setState({showSendModal: true})}>{i18next.t("general:Send")}</Button>
+            {/* the emails are sent through the saved invitation, so it needs the invitation to exist */}
+            <Button type="primary" disabled={this.state.mode === "add"} style={{marginTop: "20px"}} onClick={() => this.setState({showSendModal: true})}>{i18next.t("general:Send")}</Button>
           </Col>
         </Row>
         <Row style={{marginTop: "20px"}} >
@@ -339,12 +354,18 @@ class InvitationEditPage extends React.Component {
 
   submitInvitationEdit(exitAfterSave) {
     const invitation = Setting.deepCopy(this.state.invitation);
-    InvitationBackend.updateInvitation(this.state.organizationName, this.state.invitationName, invitation)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? InvitationBackend.addInvitation(invitation)
+      : InvitationBackend.updateInvitation(this.state.organizationName, this.state.invitationName, invitation);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.invitation.owner,
             invitationName: this.state.invitation.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -354,7 +375,9 @@ class InvitationEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateInvitationField("name", this.state.invitationName);
+          if (!isAdd) {
+            this.updateInvitationField("name", this.state.invitationName);
+          }
         }
       })
       .catch(error => {
@@ -363,17 +386,7 @@ class InvitationEditPage extends React.Component {
   }
 
   deleteInvitation() {
-    InvitationBackend.deleteInvitation(this.state.invitation)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/invitations");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/invitations");
   }
 
   render() {
@@ -381,9 +394,9 @@ class InvitationEditPage extends React.Component {
       <div>
         {this.state.showSendModal ? this.renderSendEmailModal() : null}
         {
-          this.state.invitation !== null ? this.renderInvitation() : null
+          this.state.invitation !== null ? this.renderInvitation() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitInvitationEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitInvitationEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteInvitation()}>{i18next.t("general:Cancel")}</Button> : null}

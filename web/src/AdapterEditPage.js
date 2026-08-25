@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Row, Select, Switch} from "antd";
 import * as AdapterBackend from "./backend/AdapterBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
@@ -40,6 +41,13 @@ class AdapterEditPage extends React.Component {
   }
 
   getAdapter() {
+    if (this.state.mode === "add" && this.props.location.adapter) {
+      this.setState({
+        adapter: this.props.location.adapter,
+      });
+      return;
+    }
+
     AdapterBackend.getAdapter(this.state.organizationName, this.state.adapterName)
       .then((res) => {
         if (res.status === "ok") {
@@ -158,7 +166,7 @@ class AdapterEditPage extends React.Component {
             <React.Fragment>
               <Row style={{marginTop: "20px"}} >
                 <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-                  {Setting.getLabel(i18next.t("provider:Type"), i18next.t("provider:Type - Tooltip"))} :
+                  {Setting.getLabel(i18next.t("general:Type"), i18next.t("general:Type - Tooltip"))} :
                 </Col>
                 <Col span={22} >
                   <Select virtual={false} disabled={Setting.builtInObject(this.state.adapter)} style={{width: "100%"}} value={this.state.adapter.type} onChange={(value => {
@@ -196,7 +204,7 @@ class AdapterEditPage extends React.Component {
               </Row>
               <Row style={{marginTop: "20px"}} >
                 <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-                  {Setting.getLabel(i18next.t("provider:Host"), i18next.t("provider:Host - Tooltip"))} :
+                  {Setting.getLabel(i18next.t("general:Host"), i18next.t("provider:Host - Tooltip"))} :
                 </Col>
                 <Col span={22} >
                   <Input value={this.state.adapter.host} onChange={e => {
@@ -206,7 +214,7 @@ class AdapterEditPage extends React.Component {
               </Row>
               <Row style={{marginTop: "20px"}} >
                 <Col style={{marginTop: "5px"}} span={(Setting.isMobile()) ? 22 : 2}>
-                  {Setting.getLabel(i18next.t("provider:Port"), i18next.t("provider:Port - Tooltip"))} :
+                  {Setting.getLabel(i18next.t("general:Port"), i18next.t("provider:Port - Tooltip"))} :
                 </Col>
                 <Col span={22} >
                   <InputNumber value={this.state.adapter.port} min={0} max={65535} onChange={value => {
@@ -252,7 +260,8 @@ class AdapterEditPage extends React.Component {
             {Setting.getLabel(i18next.t("provider:DB test"), i18next.t("provider:DB test - Tooltip"))} :
           </Col>
           <Col span={2} >
-            <Button disabled={this.state.organizationName !== this.state.adapter.owner} type={"primary"} onClick={() => {
+            {/* the test goes through the saved adapter record, so it is not available before the adapter is created */}
+            <Button disabled={this.state.mode === "add" || this.state.organizationName !== this.state.adapter.owner} type={"primary"} onClick={() => {
               AdapterBackend.getPolicies("", "", `${this.state.adapter.owner}/${this.state.adapter.name}`)
                 .then((res) => {
                   if (res.status === "ok") {
@@ -274,13 +283,18 @@ class AdapterEditPage extends React.Component {
 
   submitAdapterEdit(exitAfterSave) {
     const adapter = Setting.deepCopy(this.state.adapter);
-    AdapterBackend.updateAdapter(this.state.organizationName, this.state.adapterName, adapter)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? AdapterBackend.addAdapter(adapter)
+      : AdapterBackend.updateAdapter(this.state.organizationName, this.state.adapterName, adapter);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
             organizationName: this.state.adapter.owner,
             adapterName: this.state.adapter.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -290,7 +304,9 @@ class AdapterEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updateAdapterField("name", this.state.adapterName);
+          if (!isAdd) {
+            this.updateAdapterField("name", this.state.adapterName);
+          }
         }
       })
       .catch(error => {
@@ -299,26 +315,16 @@ class AdapterEditPage extends React.Component {
   }
 
   deleteAdapter() {
-    AdapterBackend.deleteAdapter(this.state.adapter)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/adapters");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/adapters");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.adapter !== null ? this.renderAdapter() : null
+          this.state.adapter !== null ? this.renderAdapter() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
+        <div style={{margin: "20px 40px"}}>
           <Button size="large" onClick={() => this.submitAdapterEdit(false)}>{i18next.t("general:Save")}</Button>
           <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitAdapterEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
           {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deleteAdapter()}>{i18next.t("general:Cancel")}</Button> : null}

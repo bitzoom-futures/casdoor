@@ -15,11 +15,13 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/casdoor/casdoor/i18n"
 	"github.com/casdoor/casdoor/util"
 	"github.com/xorm-io/core"
+	"golang.org/x/crypto/ssh"
 )
 
 type TableColumn struct {
@@ -61,7 +63,8 @@ type Syncer struct {
 	IsReadOnly       bool           `json:"isReadOnly"`
 	IsEnabled        bool           `json:"isEnabled"`
 
-	Ormer *Ormer `xorm:"-" json:"-"`
+	Ormer     *Ormer      `xorm:"-" json:"-"`
+	SshClient *ssh.Client `xorm:"-" json:"-"`
 }
 
 func GetSyncerCount(owner, organization, field, value string) (int64, error) {
@@ -126,6 +129,19 @@ func GetSyncer(id string) (*Syncer, error) {
 	return getSyncer(owner, name)
 }
 
+func GetSyncerByOrganization(id string, organization string) (*Syncer, error) {
+	syncer, err := GetSyncer(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if syncer == nil || syncer.Organization != organization {
+		return nil, nil
+	}
+
+	return syncer, nil
+}
+
 func GetMaskedSyncer(syncer *Syncer, errs ...error) (*Syncer, error) {
 	if len(errs) > 0 && errs[0] != nil {
 		return nil, errs[0]
@@ -168,10 +184,13 @@ func UpdateSyncer(id string, syncer *Syncer, isGlobalAdmin bool, lang string) (b
 	} else if s == nil {
 		return false, nil
 	} else if !isGlobalAdmin && s.Organization != syncer.Organization {
-		return false, fmt.Errorf(i18n.Translate(lang, "auth:Unauthorized operation"))
+		return false, errors.New(i18n.Translate(lang, "auth:Unauthorized operation"))
 	}
 
-	session := ormer.Engine.ID(core.PK{owner, name}).AllCols()
+	// Close old syncer connections before updating
+	_ = s.Close()
+
+	session := ormer.Engine.ID(core.PK{owner, name}).Where("organization = ?", s.Organization).AllCols()
 	if syncer.Password == "***" {
 		syncer.Password = s.Password
 	}
@@ -200,7 +219,11 @@ func updateSyncerErrorText(syncer *Syncer, line string) (bool, error) {
 		return false, nil
 	}
 
+	const maxErrorTextLen = 65536
 	s.ErrorText = s.ErrorText + line
+	if len(s.ErrorText) > maxErrorTextLen {
+		s.ErrorText = s.ErrorText[len(s.ErrorText)-maxErrorTextLen:]
+	}
 
 	affected, err := ormer.Engine.ID(core.PK{s.Owner, s.Name}).Cols("error_text").Update(s)
 	if err != nil {
@@ -307,30 +330,35 @@ func TestSyncer(syncer Syncer) error {
 		return err
 	}
 
-	if syncer.Password == "***" {
+	// the syncer may not be created yet when the connection is tested from the syncer add page
+	if syncer.Password == "***" && oldSyncer != nil {
 		syncer.Password = oldSyncer.Password
 	}
 
-	// For WeCom syncer, test by getting access token
-	if syncer.Type == "WeCom" {
-		_, err := syncer.getWecomAccessToken()
-		return err
-	}
+	provider := GetSyncerProvider(&syncer)
+	return provider.TestConnection()
+}
 
-	// For Azure AD syncer, test by getting access token
-	if syncer.Type == "Azure AD" {
-		_, err := syncer.getAzureAdAccessToken()
-		return err
+func (syncer *Syncer) Close() error {
+	var err error
+	if syncer.Ormer != nil {
+		if syncer.Ormer.Engine != nil {
+			err = syncer.Ormer.Engine.Close()
+			syncer.Ormer.Engine = nil
+		}
+		if syncer.Ormer.Db != nil {
+			if dbErr := syncer.Ormer.Db.Close(); dbErr != nil && err == nil {
+				err = dbErr
+			}
+			syncer.Ormer.Db = nil
+		}
+		syncer.Ormer = nil
 	}
-
-	err = syncer.initAdapter()
-	if err != nil {
-		return err
+	if syncer.SshClient != nil {
+		if sshErr := syncer.SshClient.Close(); sshErr != nil && err == nil {
+			err = sshErr
+		}
+		syncer.SshClient = nil
 	}
-
-	err = syncer.Ormer.Engine.Ping()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

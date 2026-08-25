@@ -76,7 +76,7 @@ class ResourceListPage extends BaseListPage {
 
   renderUpload() {
     return (
-      <Upload maxCount={1} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.csv,.xls,.xlsx" showUploadList={false}
+      <Upload maxCount={1} showUploadList={false}
         beforeUpload={file => {return false;}} onChange={info => {this.handleUpload(info);}}>
         <Button id="upload-button" icon={<UploadOutlined />} loading={this.state.uploading} type="primary" size="small">
           {i18next.t("resource:Upload a file...")}
@@ -148,7 +148,7 @@ class ResourceListPage extends BaseListPage {
         },
       },
       {
-        title: i18next.t("resource:Parent"),
+        title: i18next.t("general:Parent"),
         dataIndex: "parent",
         key: "parent",
         width: "80px",
@@ -174,7 +174,7 @@ class ResourceListPage extends BaseListPage {
         },
       },
       {
-        title: i18next.t("user:Tag"),
+        title: i18next.t("general:Tag"),
         dataIndex: "tag",
         key: "tag",
         width: "80px",
@@ -189,7 +189,7 @@ class ResourceListPage extends BaseListPage {
       //   sorter: (a, b) => a.fileName.localeCompare(b.fileName),
       // },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "fileType",
         key: "fileType",
         width: "80px",
@@ -290,7 +290,7 @@ class ResourceListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={resources} rowKey="name" size="middle" bordered pagination={paginationProps}
+        <Table scroll={{x: true}} columns={columns} dataSource={resources} rowKey="name" size="middle" bordered pagination={paginationProps}
           title={() => (
             <div>
               {i18next.t("general:Resources")}&nbsp;&nbsp;&nbsp;&nbsp;
@@ -300,7 +300,7 @@ class ResourceListPage extends BaseListPage {
               }
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

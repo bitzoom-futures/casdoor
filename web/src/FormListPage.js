@@ -39,22 +39,8 @@ class FormListPage extends BaseListPage {
 
   addForm() {
     const newForm = this.newForm();
-    FormBackend.addForm(newForm)
-      .then((res) => {
-        if (res.status === "ok") {
-          sessionStorage.setItem("formListUrl", window.location.pathname);
-          this.props.history.push({
-            pathname: `/forms/${newForm.name}`,
-            mode: "add",
-          });
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    sessionStorage.setItem("formListUrl", window.location.pathname);
+    this.props.history.push({pathname: `/forms/${newForm.name}`, mode: "add", form: newForm});
   }
 
   deleteForm(record) {
@@ -193,7 +179,7 @@ class FormListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={forms}
+        <Table scroll={{x: true}} columns={columns} dataSource={forms}
           rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered
           pagination={paginationProps}
           title={() => (
@@ -203,7 +189,7 @@ class FormListPage extends BaseListPage {
                 onClick={this.addForm.bind(this)}>{i18next.t("general:Add")}</Button>
             </div>
           )}
-          loading={this.state.loading}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

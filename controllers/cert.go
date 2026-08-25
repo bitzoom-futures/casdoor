@@ -17,7 +17,7 @@ package controllers
 import (
 	"encoding/json"
 
-	"github.com/beego/beego/utils/pagination"
+	"github.com/beego/beego/v2/core/utils/pagination"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
 )
@@ -30,19 +30,27 @@ import (
 // @Success 200 {array} object.Cert The Response object
 // @router /get-certs [get]
 func (c *ApiController) GetCerts() {
-	owner := c.Input().Get("owner")
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
+	owner := c.Ctx.Input.Query("owner")
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
 
 	if limit == "" || page == "" {
-		certs, err := object.GetMaskedCerts(object.GetCerts(owner))
+		certs, err := object.GetCerts(owner)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
+		}
+
+		if !c.IsAdmin() {
+			certs, err = object.GetMaskedCerts(certs, nil)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
 		}
 
 		c.ResponseOk(certs)
@@ -54,11 +62,19 @@ func (c *ApiController) GetCerts() {
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
-		certs, err := object.GetMaskedCerts(object.GetPaginationCerts(owner, paginator.Offset(), limit, field, value, sortField, sortOrder))
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
+		certs, err := object.GetPaginationCerts(owner, paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
+		}
+
+		if !c.IsAdmin() {
+			certs, err = object.GetMaskedCerts(certs, err)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
 		}
 
 		c.ResponseOk(certs, paginator.Nums())
@@ -72,18 +88,26 @@ func (c *ApiController) GetCerts() {
 // @Success 200 {array} object.Cert The Response object
 // @router /get-global-certs [get]
 func (c *ApiController) GetGlobalCerts() {
-	limit := c.Input().Get("pageSize")
-	page := c.Input().Get("p")
-	field := c.Input().Get("field")
-	value := c.Input().Get("value")
-	sortField := c.Input().Get("sortField")
-	sortOrder := c.Input().Get("sortOrder")
+	limit := c.Ctx.Input.Query("pageSize")
+	page := c.Ctx.Input.Query("p")
+	field := c.Ctx.Input.Query("field")
+	value := c.Ctx.Input.Query("value")
+	sortField := c.Ctx.Input.Query("sortField")
+	sortOrder := c.Ctx.Input.Query("sortOrder")
 
 	if limit == "" || page == "" {
-		certs, err := object.GetMaskedCerts(object.GetGlobalCerts())
+		certs, err := object.GetGlobalCerts()
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
+		}
+
+		if !c.IsAdmin() {
+			certs, err = object.GetMaskedCerts(certs, nil)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
 		}
 
 		c.ResponseOk(certs)
@@ -95,11 +119,19 @@ func (c *ApiController) GetGlobalCerts() {
 			return
 		}
 
-		paginator := pagination.SetPaginator(c.Ctx, limit, count)
-		certs, err := object.GetMaskedCerts(object.GetPaginationGlobalCerts(paginator.Offset(), limit, field, value, sortField, sortOrder))
+		paginator := pagination.NewPaginator(c.Ctx.Request, limit, count)
+		certs, err := object.GetPaginationGlobalCerts(paginator.Offset(), limit, field, value, sortField, sortOrder)
 		if err != nil {
 			c.ResponseError(err.Error())
 			return
+		}
+
+		if !c.IsAdmin() {
+			certs, err = object.GetMaskedCerts(certs, nil)
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
 		}
 
 		c.ResponseOk(certs, paginator.Nums())
@@ -114,14 +146,18 @@ func (c *ApiController) GetGlobalCerts() {
 // @Success 200 {object} object.Cert The Response object
 // @router /get-cert [get]
 func (c *ApiController) GetCert() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 	cert, err := object.GetCert(id)
 	if err != nil {
 		c.ResponseError(err.Error())
 		return
 	}
 
-	c.ResponseOk(object.GetMaskedCert(cert))
+	if !c.IsAdmin() {
+		cert = object.GetMaskedCert(cert)
+	}
+
+	c.ResponseOk(cert)
 }
 
 // UpdateCert
@@ -133,7 +169,7 @@ func (c *ApiController) GetCert() {
 // @Success 200 {object} controllers.Response The Response object
 // @router /update-cert [post]
 func (c *ApiController) UpdateCert() {
-	id := c.Input().Get("id")
+	id := c.Ctx.Input.Query("id")
 
 	var cert object.Cert
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &cert)
@@ -181,5 +217,42 @@ func (c *ApiController) DeleteCert() {
 	}
 
 	c.Data["json"] = wrapActionResponse(object.DeleteCert(&cert))
+	c.ServeJSON()
+}
+
+// UpdateCertDomainExpire
+// @Title UpdateCertDomainExpire
+// @Tag Cert API
+// @Description update cert domain expire time
+// @Param   id     query   string  true        "The ID of the cert"
+// @Success 200 {object} controllers.Response The Response object
+// @router /update-cert-domain-expire [post]
+func (c *ApiController) UpdateCertDomainExpire() {
+	if _, ok := c.RequireSignedIn(); !ok {
+		return
+	}
+
+	id := c.Ctx.Input.Query("id")
+	cert, err := object.GetCert(id)
+	if err != nil {
+		c.ResponseError(err.Error())
+		return
+	}
+
+	domainExpireTime, err := object.GetDomainExpireTime(cert.Name)
+	if err != nil {
+		c.ResponseError(err.Error())
+		return
+	}
+
+	if domainExpireTime == "" {
+		c.ResponseError("Failed to determine domain expiration time for domain " + cert.Name +
+			". Please verify that the domain is valid, publicly resolvable, and has a retrievable expiration date, " +
+			"or update the domain expiration time manually.")
+		return
+	}
+	cert.DomainExpireTime = domainExpireTime
+
+	c.Data["json"] = wrapActionResponse(object.UpdateCert(id, cert))
 	c.ServeJSON()
 }

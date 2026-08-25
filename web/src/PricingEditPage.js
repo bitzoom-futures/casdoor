@@ -15,6 +15,7 @@
 import {CopyOutlined} from "@ant-design/icons";
 import copy from "copy-to-clipboard";
 import React from "react";
+import Loading from "./common/Loading";
 import {Button, Card, Col, Input, InputNumber, Row, Select, Switch} from "antd";
 import * as ApplicationBackend from "./backend/ApplicationBackend";
 import * as OrganizationBackend from "./backend/OrganizationBackend";
@@ -46,6 +47,16 @@ class PricingEditPage extends React.Component {
   }
 
   getPricing() {
+    if (this.state.mode === "add" && this.props.location.pricing) {
+      const pricing = this.props.location.pricing;
+      this.setState({
+        pricing: pricing,
+      });
+
+      this.getPlans(this.state.organizationName);
+      return;
+    }
+
     PricingBackend.getPricing(this.state.organizationName, this.state.pricingName)
       .then((res) => {
         if (res.data === null) {
@@ -116,13 +127,16 @@ class PricingEditPage extends React.Component {
   }
 
   renderPricing() {
+    const isViewMode = this.state.mode === "view";
     return (
       <Card size="small" title={
         <div>
-          {this.state.mode === "add" ? i18next.t("pricing:New Pricing") : i18next.t("pricing:Edit Pricing")}&nbsp;&nbsp;&nbsp;&nbsp;
-          <Button onClick={() => this.submitPricingEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitPricingEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deletePricing()}>{i18next.t("general:Cancel")}</Button> : null}
+          {this.state.mode === "add" ? i18next.t("pricing:New Pricing") : (isViewMode ? i18next.t("pricing:View Pricing") : i18next.t("pricing:Edit Pricing"))}&nbsp;&nbsp;&nbsp;&nbsp;
+          {!isViewMode && (<>
+            <Button onClick={() => this.submitPricingEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" onClick={() => this.submitPricingEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} onClick={() => this.deletePricing()}>{i18next.t("general:Cancel")}</Button> : null}
+          </>)}
         </div>
       } style={(Setting.isMobile()) ? {margin: "5px"} : {}} type="inner">
         <Row style={{marginTop: "10px"}} >
@@ -130,7 +144,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Organization"), i18next.t("general:Organization - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Select virtual={false} style={{width: "100%"}} value={this.state.pricing.owner} onChange={(owner => {
+            <Select virtual={false} style={{width: "100%"}} value={this.state.pricing.owner} disabled={isViewMode} onChange={(owner => {
               this.updatePricingField("owner", owner);
               this.getApplicationsByOrganization(owner);
               this.getPlans(owner);
@@ -144,7 +158,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Name"), i18next.t("general:Name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.pricing.name} onChange={e => {
+            <Input value={this.state.pricing.name} disabled={isViewMode} onChange={e => {
               this.updatePricingField("name", e.target.value);
             }} />
           </Col>
@@ -154,7 +168,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Display name"), i18next.t("general:Display name - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.pricing.displayName} onChange={e => {
+            <Input value={this.state.pricing.displayName} disabled={isViewMode} onChange={e => {
               this.updatePricingField("displayName", e.target.value);
             }} />
           </Col>
@@ -164,7 +178,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Description"), i18next.t("general:Description - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <Input value={this.state.pricing.description} onChange={e => {
+            <Input value={this.state.pricing.description} disabled={isViewMode} onChange={e => {
               this.updatePricingField("description", e.target.value);
             }} />
           </Col>
@@ -175,6 +189,7 @@ class PricingEditPage extends React.Component {
           </Col>
           <Col span={22} >
             <Select virtual={false} style={{width: "100%"}} value={this.state.pricing.application}
+              disabled={isViewMode}
               onChange={(value => {this.updatePricingField("application", value);})}
               options={this.state.applications.map((application) => Setting.getOption(application.name, application.name))
               } />
@@ -186,6 +201,7 @@ class PricingEditPage extends React.Component {
           </Col>
           <Col span={22} >
             <Select virtual={false} mode="multiple" style={{width: "100%"}} value={this.state.pricing.plans}
+              disabled={isViewMode}
               onChange={(value => {
                 this.updatePricingField("plans", value);
               })}
@@ -198,7 +214,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("pricing:Trial duration"), i18next.t("pricing:Trial duration - Tooltip"))} :
           </Col>
           <Col span={22} >
-            <InputNumber min={0} value={this.state.pricing.trialDuration} onChange={value => {
+            <InputNumber min={0} value={this.state.pricing.trialDuration} disabled={isViewMode} onChange={value => {
               this.updatePricingField("trialDuration", value);
             }} />
           </Col>
@@ -208,7 +224,7 @@ class PricingEditPage extends React.Component {
             {Setting.getLabel(i18next.t("general:Is enabled"), i18next.t("general:Is enabled - Tooltip"))} :
           </Col>
           <Col span={1} >
-            <Switch checked={this.state.pricing.isEnabled} onChange={checked => {
+            <Switch checked={this.state.pricing.isEnabled} disabled={isViewMode} onChange={checked => {
               this.updatePricingField("isEnabled", checked);
             }} />
           </Col>
@@ -227,12 +243,18 @@ class PricingEditPage extends React.Component {
 
   submitPricingEdit(exitAfterSave) {
     const pricing = Setting.deepCopy(this.state.pricing);
-    PricingBackend.updatePricing(this.state.organizationName, this.state.pricingName, pricing)
+    const isAdd = this.state.mode === "add";
+    const apiCall = isAdd
+      ? PricingBackend.addPricing(pricing)
+      : PricingBackend.updatePricing(this.state.organizationName, this.state.pricingName, pricing);
+    apiCall
       .then((res) => {
         if (res.status === "ok") {
           Setting.showMessage("success", i18next.t("general:Successfully saved"));
           this.setState({
+            organizationName: this.state.pricing.owner,
             pricingName: this.state.pricing.name,
+            mode: "edit",
           });
 
           if (exitAfterSave) {
@@ -242,7 +264,9 @@ class PricingEditPage extends React.Component {
           }
         } else {
           Setting.showMessage("error", `${i18next.t("general:Failed to save")}: ${res.msg}`);
-          this.updatePricingField("name", this.state.pricingName);
+          if (!isAdd) {
+            this.updatePricingField("name", this.state.pricingName);
+          }
         }
       })
       .catch(error => {
@@ -251,30 +275,22 @@ class PricingEditPage extends React.Component {
   }
 
   deletePricing() {
-    PricingBackend.deletePricing(this.state.pricing)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push("/pricings");
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to delete")}: ${res.msg}`);
-        }
-      })
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push("/pricings");
   }
 
   render() {
     return (
       <div>
         {
-          this.state.pricing !== null ? this.renderPricing() : null
+          this.state.pricing !== null ? this.renderPricing() : <Loading type="page" tip={i18next.t("login:Loading")} />
         }
-        <div style={{marginTop: "20px", marginLeft: "40px"}}>
-          <Button size="large" onClick={() => this.submitPricingEdit(false)}>{i18next.t("general:Save")}</Button>
-          <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitPricingEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
-          {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deletePricing()}>{i18next.t("general:Cancel")}</Button> : null}
-        </div>
+        {this.state.mode !== "view" && (
+          <div style={{margin: "20px 40px"}}>
+            <Button size="large" onClick={() => this.submitPricingEdit(false)}>{i18next.t("general:Save")}</Button>
+            <Button style={{marginLeft: "20px"}} type="primary" size="large" onClick={() => this.submitPricingEdit(true)}>{i18next.t("general:Save & Exit")}</Button>
+            {this.state.mode === "add" ? <Button style={{marginLeft: "20px"}} size="large" onClick={() => this.deletePricing()}>{i18next.t("general:Cancel")}</Button> : null}
+          </div>
+        )}
       </div>
     );
   }

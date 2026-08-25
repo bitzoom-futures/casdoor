@@ -14,7 +14,7 @@
 
 import React from "react";
 import {Link} from "react-router-dom";
-import {Button, Table} from "antd";
+import {Button, Col, List, Row, Table, Tooltip} from "antd";
 import moment from "moment";
 import * as Setting from "./Setting";
 import * as PaymentBackend from "./backend/PaymentBackend";
@@ -22,6 +22,7 @@ import i18next from "i18next";
 import BaseListPage from "./BaseListPage";
 import * as Provider from "./auth/Provider";
 import PopconfirmModal from "./common/modal/PopconfirmModal";
+import {EditOutlined} from "@ant-design/icons";
 
 class PaymentListPage extends BaseListPage {
   newPayment() {
@@ -35,14 +36,13 @@ class PaymentListPage extends BaseListPage {
       provider: "provider_pay_paypal",
       type: "PayPal",
       user: "admin",
-      productName: "computer-1",
-      productDisplayName: "A notebook computer",
-      detail: "This is a computer with excellent CPU, memory and disk",
+      products: [],
+      productsDisplayName: "",
+      detail: "This is a payment",
       tag: "Promotion-1",
       currency: "USD",
       price: 300.00,
       payUrl: "https://pay.com/pay.php",
-      returnUrl: "https://door.casdoor.com/payments",
       state: "Paid",
       message: "",
     };
@@ -50,19 +50,7 @@ class PaymentListPage extends BaseListPage {
 
   addPayment() {
     const newPayment = this.newPayment();
-    PaymentBackend.addPayment(newPayment)
-      .then((res) => {
-        if (res.status === "ok") {
-          this.props.history.push({pathname: `/payments/${newPayment.owner}/${newPayment.name}`, mode: "add"});
-          Setting.showMessage("success", i18next.t("general:Successfully added"));
-        } else {
-          Setting.showMessage("error", `${i18next.t("general:Failed to add")}: ${res.msg}`);
-        }
-      }
-      )
-      .catch(error => {
-        Setting.showMessage("error", `${i18next.t("general:Failed to connect to server")}: ${error}`);
-      });
+    this.props.history.push({pathname: `/payments/${newPayment.owner}/${newPayment.name}`, mode: "add", payment: newPayment});
   }
 
   deletePayment(i) {
@@ -161,7 +149,7 @@ class PaymentListPage extends BaseListPage {
         },
       },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "type",
         key: "type",
         width: "140px",
@@ -175,35 +163,69 @@ class PaymentListPage extends BaseListPage {
         },
       },
       {
-        title: i18next.t("payment:Product"),
-        dataIndex: "productDisplayName",
-        key: "productDisplayName",
-        // width: '160px',
-        sorter: true,
-        ...this.getColumnSearchProps("productDisplayName"),
+        title: i18next.t("general:Products"),
+        dataIndex: "products",
+        key: "products",
+        ...this.getColumnSearchProps("products"),
         render: (text, record, index) => {
+          const productInfos = record?.orderObj?.productInfos || [];
+          if (productInfos.length === 0) {
+            return `(${i18next.t("general:empty")})`;
+          }
           return (
-            <Link to={`/products/${record.owner}/${record.productName}`}>
-              {text}
-            </Link>
+            <div>
+              <List
+                size="small"
+                locale={{emptyText: " "}}
+                dataSource={productInfos}
+                style={{
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                }}
+                renderItem={(productInfo, i) => {
+                  const price = productInfo.price || 0;
+                  const number = productInfo.quantity || 1;
+                  const currency = record.currency || "USD";
+                  const productName = productInfo.displayName || productInfo.name;
+                  return (
+                    <List.Item>
+                      <Row style={{width: "100%"}} wrap={false} gutter={[12, 0]}>
+                        <Col flex="auto" style={{minWidth: 0}}>
+                          <div style={{display: "flex", alignItems: "center", minWidth: 0}}>
+                            <Tooltip placement="topLeft" title={i18next.t("general:Edit")}>
+                              <Button style={{marginRight: "5px"}} icon={<EditOutlined />} size="small" onClick={() => Setting.goToLinkSoft(this, `/products/${record.owner}/${productInfo.name}`)} />
+                            </Tooltip>
+                            <Tooltip placement="topLeft" title={productName}>
+                              <Link to={`/products/${record.owner}/${productInfo.name}`} style={{display: "inline-block", maxWidth: "100%", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                {productName}
+                              </Link>
+                            </Tooltip>
+                          </div>
+                        </Col>
+                        <Col flex="none" style={{whiteSpace: "nowrap"}}>
+                          <span style={{color: "#666"}}>
+                            {Setting.getCurrencySymbol(currency)}{price} ({Setting.getCurrencyText(currency)}) × {number}
+                          </span>
+                        </Col>
+                      </Row>
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
           );
         },
       },
       {
-        title: i18next.t("product:Price"),
+        title: i18next.t("order:Price"),
         dataIndex: "price",
         key: "price",
-        width: "120px",
+        width: "160px",
         sorter: true,
         ...this.getColumnSearchProps("price"),
-      },
-      {
-        title: i18next.t("payment:Currency"),
-        dataIndex: "currency",
-        key: "currency",
-        width: "120px",
-        sorter: true,
-        ...this.getColumnSearchProps("currency"),
+        render: (text, record, index) => {
+          return Setting.getPriceDisplay(record.price, record.currency);
+        },
       },
       {
         title: i18next.t("general:State"),
@@ -220,11 +242,13 @@ class PaymentListPage extends BaseListPage {
         width: "240px",
         fixed: (Setting.isMobile()) ? "false" : "right",
         render: (text, record, index) => {
+          const isAdmin = Setting.isLocalAdminUser(this.props.account);
           return (
             <div>
               <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} onClick={() => this.props.history.push(`/payments/${record.owner}/${record.name}/result`)}>{i18next.t("payment:Result")}</Button>
-              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push(`/payments/${record.owner}/${record.name}`)}>{i18next.t("general:Edit")}</Button>
+              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push({pathname: `/payments/${record.owner}/${record.name}`, mode: isAdmin ? "edit" : "view"})}>{isAdmin ? i18next.t("general:Edit") : i18next.t("general:View")}</Button>
               <PopconfirmModal
+                disabled={!isAdmin}
                 title={i18next.t("general:Sure to delete") + `: ${record.name} ?`}
                 onConfirm={() => this.deletePayment(index)}
               >
@@ -244,14 +268,17 @@ class PaymentListPage extends BaseListPage {
 
     return (
       <div>
-        <Table scroll={{x: "max-content"}} columns={columns} dataSource={payments} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
-          title={() => (
-            <div>
-              {i18next.t("general:Payments")}&nbsp;&nbsp;&nbsp;&nbsp;
-              <Button type="primary" size="small" onClick={this.addPayment.bind(this)}>{i18next.t("general:Add")}</Button>
-            </div>
-          )}
-          loading={this.state.loading}
+        <Table scroll={{x: true}} columns={columns} dataSource={payments} rowKey={(record) => `${record.owner}/${record.name}`} size="middle" bordered pagination={paginationProps}
+          title={() => {
+            const isAdmin = Setting.isLocalAdminUser(this.props.account);
+            return (
+              <div>
+                {i18next.t("general:Payments")}&nbsp;&nbsp;&nbsp;&nbsp;
+                <Button type="primary" size="small" disabled={!isAdmin} onClick={this.addPayment.bind(this)}>{i18next.t("general:Add")}</Button>
+              </div>
+            );
+          }}
+          loading={this.getTableLoading()}
           onChange={this.handleTableChange}
         />
       </div>

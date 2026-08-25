@@ -38,6 +38,7 @@ export const SignupTableDefaultCssMap = {
   "Agreement": ".login-agreement{}",
   "Signup button": ".signup-button{}\n.signup-link{}",
   "Providers": ".provider-img {\n width: 30px;\n margin: 5px;\n }\n .provider-big-img {\n margin-bottom: 10px;\n }\n ",
+  "Languages": ".signup-languages {\n    top: 55px;\n    right: 5px;\n    position: absolute;\n}",
 };
 
 const {Option} = Select;
@@ -99,12 +100,12 @@ class SignupTable extends React.Component {
             {name: "Affiliation", displayName: i18next.t("user:Affiliation")},
             {name: "Gender", displayName: i18next.t("user:Gender")},
             {name: "Bio", displayName: i18next.t("user:Bio")},
-            {name: "Tag", displayName: i18next.t("user:Tag")},
+            {name: "Tag", displayName: i18next.t("general:Tag")},
             {name: "Education", displayName: i18next.t("user:Education")},
             {name: "Country/Region", displayName: i18next.t("user:Country/Region")},
             {name: "ID card", displayName: i18next.t("user:ID card")},
             {name: "Password", displayName: i18next.t("general:Password")},
-            {name: "Confirm password", displayName: i18next.t("signup:Confirm")},
+            {name: "Confirm password", displayName: i18next.t("general:Confirm")},
             {name: "Email", displayName: i18next.t("general:Email")},
             {name: "Phone", displayName: i18next.t("general:Phone")},
             {name: "Email or Phone", displayName: i18next.t("general:Email or Phone")},
@@ -112,7 +113,8 @@ class SignupTable extends React.Component {
             {name: "Invitation code", displayName: i18next.t("application:Invitation code")},
             {name: "Agreement", displayName: i18next.t("signup:Agreement")},
             {name: "Signup button", displayName: i18next.t("signup:Signup button")},
-            {name: "Providers", displayName: i18next.t("general:Providers")},
+            {name: "Providers", displayName: i18next.t("application:Providers")},
+            {name: "Languages", displayName: i18next.t("general:Languages")},
             {name: "Text 1", displayName: i18next.t("signup:Text 1")},
             {name: "Text 2", displayName: i18next.t("signup:Text 2")},
             {name: "Text 3", displayName: i18next.t("signup:Text 3")},
@@ -165,12 +167,12 @@ class SignupTable extends React.Component {
         },
       },
       {
-        title: i18next.t("provider:Required"),
+        title: i18next.t("organization:Required"),
         dataIndex: "required",
         key: "required",
         width: "80px",
         render: (text, record, index) => {
-          if (!record.visible || ["Signup button", "Providers"].includes(record.name)) {
+          if (!record.visible || ["Signup button", "Providers", "Languages"].includes(record.name)) {
             return null;
           }
 
@@ -187,7 +189,7 @@ class SignupTable extends React.Component {
         key: "prompted",
         width: "80px",
         render: (text, record, index) => {
-          if (["ID", "Signup button", "Providers"].includes(record.name)) {
+          if (["ID", "Signup button", "Providers", "Languages"].includes(record.name)) {
             return null;
           }
 
@@ -203,7 +205,7 @@ class SignupTable extends React.Component {
         },
       },
       {
-        title: i18next.t("provider:Type"),
+        title: i18next.t("general:Type"),
         dataIndex: "type",
         key: "type",
         width: "160px",
@@ -320,7 +322,7 @@ class SignupTable extends React.Component {
         key: "regex",
         width: "180px",
         render: (text, record, index) => {
-          if (record.name.startsWith("Text ") || ["Password", "Confirm password", "Signup button", "Provider"].includes(record.name)) {
+          if (record.name.startsWith("Text ") || ["Password", "Confirm password", "Signup button", "Provider", "Providers", "Languages"].includes(record.name)) {
             return null;
           }
 
@@ -369,6 +371,11 @@ class SignupTable extends React.Component {
             options = [
               {id: "big", name: i18next.t("application:Big icon")},
               {id: "small", name: i18next.t("application:Small icon")},
+            ];
+          } else if (record.name === "Languages") {
+            options = [
+              {id: "None", name: i18next.t("general:Default")},
+              {id: "Label", name: i18next.t("signup:Label")},
             ];
           }
 

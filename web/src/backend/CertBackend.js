@@ -51,6 +51,7 @@ export function updateCert(owner, name, cert) {
     credentials: "include",
     body: JSON.stringify(newCert),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -63,6 +64,7 @@ export function addCert(cert) {
     credentials: "include",
     body: JSON.stringify(newCert),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
@@ -75,7 +77,15 @@ export function deleteCert(cert) {
     credentials: "include",
     body: JSON.stringify(newCert),
     headers: {
+      "Content-Type": "application/json",
       "Accept-Language": Setting.getAcceptLanguage(),
     },
+  }).then(res => res.json());
+}
+
+export function refreshDomainExpire(owner, name) {
+  return fetch(`${Setting.ServerUrl}/api/update-cert-domain-expire?id=${owner}/${encodeURIComponent(name)}`, {
+    method: "POST",
+    credentials: "include",
   }).then(res => res.json());
 }

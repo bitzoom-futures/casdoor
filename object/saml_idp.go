@@ -31,8 +31,8 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
+	"github.com/casdoor/casdoor/util"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	saml "github.com/russellhaering/gosaml2"
 	dsig "github.com/russellhaering/goxmldsig"
 )
@@ -50,7 +50,7 @@ func NewSamlResponse(application *Application, user *User, host string, certific
 	samlResponse.CreateAttr("xmlns:saml", "urn:oasis:names:tc:SAML:2.0:assertion")
 	samlResponse.CreateAttr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
 	samlResponse.CreateAttr("xmlns:xs", "http://www.w3.org/2001/XMLSchema")
-	arId := uuid.New()
+	arId := util.GenerateUUID()
 
 	samlResponse.CreateAttr("ID", fmt.Sprintf("_%s", arId))
 	samlResponse.CreateAttr("Version", "2.0")
@@ -65,7 +65,7 @@ func NewSamlResponse(application *Application, user *User, host string, certific
 	assertion.CreateAttr("xmlns:saml", "urn:oasis:names:tc:SAML:2.0:assertion")
 	assertion.CreateAttr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
 	assertion.CreateAttr("xmlns:xs", "http://www.w3.org/2001/XMLSchema")
-	assertion.CreateAttr("ID", fmt.Sprintf("_%s", uuid.New()))
+	assertion.CreateAttr("ID", fmt.Sprintf("_%s", util.GenerateUUID()))
 	assertion.CreateAttr("Version", "2.0")
 	assertion.CreateAttr("IssueInstant", now)
 	assertion.CreateElement("saml:Issuer").SetText(host)
@@ -100,87 +100,55 @@ func NewSamlResponse(application *Application, user *User, host string, certific
 	}
 	authnStatement := assertion.CreateElement("saml:AuthnStatement")
 	authnStatement.CreateAttr("AuthnInstant", now)
-	authnStatement.CreateAttr("SessionIndex", fmt.Sprintf("_%s", uuid.New()))
+	authnStatement.CreateAttr("SessionIndex", fmt.Sprintf("_%s", util.GenerateUUID()))
 	authnStatement.CreateAttr("SessionNotOnOrAfter", expireTime)
 	authnStatement.CreateElement("saml:AuthnContext").CreateElement("saml:AuthnContextClassRef").SetText("urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport")
 
-	attributes := assertion.CreateElement("saml:AttributeStatement")
+	if !application.DisableSamlAttributes {
+		attributes := assertion.CreateElement("saml:AttributeStatement")
 
-	email := attributes.CreateElement("saml:Attribute")
-	email.CreateAttr("Name", "Email")
-	email.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
-	email.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.Email)
+		email := attributes.CreateElement("saml:Attribute")
+		email.CreateAttr("Name", "Email")
+		email.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+		email.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.Email)
 
-	name := attributes.CreateElement("saml:Attribute")
-	name.CreateAttr("Name", "Name")
-	name.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
-	name.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.Name)
+		name := attributes.CreateElement("saml:Attribute")
+		name.CreateAttr("Name", "Name")
+		name.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+		name.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.Name)
 
-	displayName := attributes.CreateElement("saml:Attribute")
-	displayName.CreateAttr("Name", "DisplayName")
-	displayName.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
-	displayName.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.DisplayName)
+		displayName := attributes.CreateElement("saml:Attribute")
+		displayName.CreateAttr("Name", "DisplayName")
+		displayName.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+		displayName.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(user.DisplayName)
 
-	err := ExtendUserWithRolesAndPermissions(user)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range application.SamlAttributes {
-		role := attributes.CreateElement("saml:Attribute")
-		role.CreateAttr("Name", item.Name)
-		role.CreateAttr("NameFormat", item.NameFormat)
-
-		valueList := replaceAttributeValue(user, item.Value)
-		for _, value := range valueList {
-			av := role.CreateElement("saml:AttributeValue")
-			av.CreateAttr("xsi:type", "xs:string").Element().SetText(value)
+		err := ExtendUserWithRolesAndPermissions(user)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	roles := attributes.CreateElement("saml:Attribute")
-	roles.CreateAttr("Name", "Roles")
-	roles.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+		for _, item := range application.SamlAttributes {
+			role := attributes.CreateElement("saml:Attribute")
+			role.CreateAttr("Name", item.Name)
+			role.CreateAttr("NameFormat", item.NameFormat)
 
-	for _, role := range user.Roles {
-		roles.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(role.Name)
+			valueList := replaceAttributeValue(user, item.Value)
+			for _, value := range valueList {
+				av := role.CreateElement("saml:AttributeValue")
+				av.CreateAttr("xsi:type", "xs:string").Element().SetText(value)
+			}
+		}
+
+		roles := attributes.CreateElement("saml:Attribute")
+		roles.CreateAttr("Name", "Roles")
+		roles.CreateAttr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+
+		for _, role := range user.Roles {
+			roles.CreateElement("saml:AttributeValue").CreateAttr("xsi:type", "xs:string").Element().SetText(role.Name)
+		}
 	}
 
 	return samlResponse, nil
-}
-
-// ensureNamespaces ensures that xsi and xs namespaces are present on Response and Assertion elements
-// This is needed because C14N10 Exclusive Canonicalization may remove namespace declarations
-// during the canonicalization process, even if they are used in attributes like xsi:type="xs:string"
-func ensureNamespaces(samlResponse *etree.Element) {
-	xsiNS := "http://www.w3.org/2001/XMLSchema-instance"
-	xsNS := "http://www.w3.org/2001/XMLSchema"
-
-	// Ensure namespaces on Response element
-	// Check if namespaces exist and update/add them
-	setNamespaceAttr(samlResponse, "xmlns:xsi", xsiNS)
-	setNamespaceAttr(samlResponse, "xmlns:xs", xsNS)
-
-	// Find and ensure namespaces on Assertion element
-	assertion := samlResponse.FindElement("./Assertion")
-	if assertion != nil {
-		setNamespaceAttr(assertion, "xmlns:xsi", xsiNS)
-		setNamespaceAttr(assertion, "xmlns:xs", xsNS)
-	}
-}
-
-// setNamespaceAttr sets a namespace attribute on an element, removing any existing one first
-func setNamespaceAttr(elem *etree.Element, key, value string) {
-	// Remove existing attribute if present by filtering the Attr slice
-	newAttrs := []etree.Attr{}
-	for _, attr := range elem.Attr {
-		if attr.Key != key {
-			newAttrs = append(newAttrs, attr)
-		}
-	}
-	elem.Attr = newAttrs
-	// Add the new attribute
-	elem.CreateAttr(key, value)
 }
 
 type X509Key struct {
@@ -417,7 +385,7 @@ func GetSamlResponse(application *Application, user *User, samlRequest string, h
 	}
 
 	if application.EnableSamlC14n10 {
-		ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+		ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList(application.SamlC14nPrefix)
 	}
 
 	// signedXML, err := ctx.SignEnvelopedLimix(samlResponse)
@@ -426,14 +394,17 @@ func GetSamlResponse(application *Application, user *User, samlRequest string, h
 	// }
 
 	// Sign the assertion (SAML 2.0 best practice)
-	assertion := samlResponse.FindElement("./Assertion")
-	if assertion != nil {
-		assertionSig, err := ctx.ConstructSignature(assertion, true)
-		if err != nil {
-			return "", "", "", fmt.Errorf("err: Failed to sign SAML assertion, %s", err.Error())
+	// Only sign if EnableSamlAssertionSignature is true
+	if application.EnableSamlAssertionSignature {
+		assertion := samlResponse.FindElement("./Assertion")
+		if assertion != nil {
+			assertionSig, err := ctx.ConstructSignature(assertion, true)
+			if err != nil {
+				return "", "", "", fmt.Errorf("err: Failed to sign SAML assertion, %s", err.Error())
+			}
+			// Insert signature as the second child of assertion (after Issuer)
+			assertion.InsertChildAt(1, assertionSig)
 		}
-		// Insert signature as the second child of assertion (after Issuer)
-		assertion.InsertChildAt(1, assertionSig)
 	}
 
 	// Sign the response
@@ -444,17 +415,10 @@ func GetSamlResponse(application *Application, user *User, samlRequest string, h
 
 	samlResponse.InsertChildAt(1, sig)
 
-	// Ensure xsi and xs namespaces are present on Response and Assertion elements
-	// This is especially important for C14N10 which may remove namespaces during canonicalization
-	// C14N10 Exclusive Canonicalization can strip namespace declarations even if they're used in attributes
-	if application.EnableSamlC14n10 {
-		ensureNamespaces(samlResponse)
-	}
-
 	doc := etree.NewDocument()
 	doc.SetRoot(samlResponse)
 
-	// Write to bytes and ensure namespaces are preserved in the final XML
+	// Write to bytes
 	xmlBytes, err := doc.WriteToBytes()
 	if err != nil {
 		return "", "", "", fmt.Errorf("err: Failed to serializes the SAML request into bytes, %s", err.Error())
@@ -493,12 +457,10 @@ func NewSamlResponse11(application *Application, user *User, requestID string, h
 	}
 
 	samlResponse.CreateAttr("xmlns:samlp", "urn:oasis:names:tc:SAML:1.0:protocol")
-	samlResponse.CreateAttr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-	samlResponse.CreateAttr("xmlns:xs", "http://www.w3.org/2001/XMLSchema")
 	samlResponse.CreateAttr("MajorVersion", "1")
 	samlResponse.CreateAttr("MinorVersion", "1")
 
-	responseID := uuid.New()
+	responseID := util.GenerateUUID()
 	samlResponse.CreateAttr("ResponseID", fmt.Sprintf("_%s", responseID))
 	samlResponse.CreateAttr("InResponseTo", requestID)
 
@@ -514,7 +476,7 @@ func NewSamlResponse11(application *Application, user *User, requestID string, h
 	assertion.CreateAttr("xmlns:saml", "urn:oasis:names:tc:SAML:1.0:assertion")
 	assertion.CreateAttr("MajorVersion", "1")
 	assertion.CreateAttr("MinorVersion", "1")
-	assertion.CreateAttr("AssertionID", uuid.New().String())
+	assertion.CreateAttr("AssertionID", util.GenerateUUID())
 	assertion.CreateAttr("Issuer", host)
 	assertion.CreateAttr("IssueInstant", now)
 

@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import React from "react";
-import {Button, Result, Spin} from "antd";
+import {Button, Result} from "antd";
+import Loading from "./common/Loading";
 import * as PaymentBackend from "./backend/PaymentBackend";
 import * as PricingBackend from "./backend/PricingBackend";
 import * as SubscriptionBackend from "./backend/SubscriptionBackend";
@@ -122,7 +123,7 @@ class PaymentResultPage extends React.Component {
         payment: payment,
       });
       if (payment.state === "Created") {
-        if (["PayPal", "Stripe", "AirWallex", "Alipay", "WeChat Pay", "Balance"].includes(payment.type)) {
+        if (["PayPal", "Stripe", "AirWallex", "Alipay", "WeChat Pay", "Balance", "Dummy"].includes(payment.type)) {
           this.setState({
             timeout: setTimeout(async() => {
               await PaymentBackend.notifyPayment(this.state.owner, this.state.paymentName);
@@ -147,12 +148,17 @@ class PaymentResultPage extends React.Component {
     }
   }
 
-  goToPaymentUrl(payment) {
-    if (payment.returnUrl === undefined || payment.returnUrl === null || payment.returnUrl === "") {
-      Setting.goToLink(`${window.location.origin}/products/${payment.owner}/${payment.productName}/buy`);
+  goToViewOrder() {
+    const payment = this.state.payment;
+    if (payment && payment.order) {
+      this.props.history.push(`/orders/${payment.owner}/${payment.order}/pay`);
     } else {
-      Setting.goToLink(payment.returnUrl);
+      Setting.showMessage("error", i18next.t("order:Order not found"));
     }
+  }
+
+  goToOrderList() {
+    this.props.history.push("/orders");
   }
 
   render() {
@@ -172,12 +178,17 @@ class PaymentResultPage extends React.Component {
             <Result
               status="success"
               title={`${i18next.t("payment:Recharged successfully")}`}
-              subTitle={`${i18next.t("payment:You have successfully recharged")} ${payment.price} ${Setting.getCurrencyText(payment)}, ${i18next.t("payment:Your current balance is")} ${this.state.user?.balance} ${Setting.getCurrencyText(payment)}`}
+              subTitle={`${i18next.t("payment:You have successfully recharged")} ${payment.price} ${Setting.getCurrencyText(payment?.currency)}, ${i18next.t("payment:Your current balance is")} ${this.state.user?.balance} ${Setting.getCurrencyText(payment?.currency)}`}
               extra={[
-                <Button type="primary" key="returnUrl" onClick={() => {
-                  this.goToPaymentUrl(payment);
+                <Button type="primary" key="viewOrder" onClick={() => {
+                  this.goToViewOrder();
                 }}>
-                  {i18next.t("payment:Return to Website")}
+                  {i18next.t("order:View Order")}
+                </Button>,
+                <Button key="orderList" onClick={() => {
+                  this.goToOrderList();
+                }} style={{marginLeft: "10px"}}>
+                  {i18next.t("order:Return to Order List")}
                 </Button>,
               ]}
             />
@@ -191,13 +202,18 @@ class PaymentResultPage extends React.Component {
           }
           <Result
             status="success"
-            title={`${i18next.t("payment:You have successfully completed the payment")}: ${payment.productDisplayName}`}
-            subTitle={i18next.t("payment:Please click the below button to return to the original website")}
+            title={`${i18next.t("payment:You have successfully completed the payment")}: ${payment.productsDisplayName}`}
+            subTitle={i18next.t("payment:You can view your order details or return to the order list")}
             extra={[
-              <Button type="primary" key="returnUrl" onClick={() => {
-                this.goToPaymentUrl(payment);
+              <Button type="primary" key="viewOrder" onClick={() => {
+                this.goToViewOrder();
               }}>
-                {i18next.t("payment:Return to Website")}
+                {i18next.t("order:View Order")}
+              </Button>,
+              <Button key="orderList" onClick={() => {
+                this.goToOrderList();
+              }} style={{marginLeft: "10px"}}>
+                {i18next.t("order:Return to Order List")}
               </Button>,
             ]}
           />
@@ -211,10 +227,10 @@ class PaymentResultPage extends React.Component {
           }
           <Result
             status="info"
-            title={`${i18next.t("payment:The payment is still under processing")}: ${payment.productDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}, ${i18next.t("payment:please wait for a few seconds...")}`}
-            subTitle={i18next.t("payment:Please click the below button to return to the original website")}
+            title={`${i18next.t("payment:The payment is still under processing")}: ${payment.productsDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}, ${i18next.t("payment:please wait for a few seconds...")}`}
+            subTitle={i18next.t("payment:You can view your order details or return to the order list")}
             extra={[
-              <Spin key="returnUrl" size="large" tip={i18next.t("payment:Processing...")} />,
+              <Loading key="returnUrl" tip={i18next.t("payment:Processing...")} style={{padding: "8px 0"}} />,
             ]}
           />
         </div>
@@ -227,13 +243,18 @@ class PaymentResultPage extends React.Component {
           }
           <Result
             status="warning"
-            title={`${i18next.t("payment:The payment has been canceled")}: ${payment.productDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
-            subTitle={i18next.t("payment:Please click the below button to return to the original website")}
+            title={`${i18next.t("payment:The payment has been canceled")}: ${payment.productsDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
+            subTitle={i18next.t("payment:You can view your order details or return to the order list")}
             extra={[
-              <Button type="primary" key="returnUrl" onClick={() => {
-                this.goToPaymentUrl(payment);
+              <Button type="primary" key="viewOrder" onClick={() => {
+                this.goToViewOrder();
               }}>
-                {i18next.t("payment:Return to Website")}
+                {i18next.t("order:View Order")}
+              </Button>,
+              <Button key="orderList" onClick={() => {
+                this.goToOrderList();
+              }} style={{marginLeft: "10px"}}>
+                {i18next.t("order:Return to Order List")}
               </Button>,
             ]}
           />
@@ -247,13 +268,18 @@ class PaymentResultPage extends React.Component {
           }
           <Result
             status="warning"
-            title={`${i18next.t("payment:The payment has time out")}: ${payment.productDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
-            subTitle={i18next.t("payment:Please click the below button to return to the original website")}
+            title={`${i18next.t("payment:The payment has timed out")}: ${payment.productsDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
+            subTitle={i18next.t("payment:You can view your order details or return to the order list")}
             extra={[
-              <Button type="primary" key="returnUrl" onClick={() => {
-                this.goToPaymentUrl(payment);
+              <Button type="primary" key="viewOrder" onClick={() => {
+                this.goToViewOrder();
               }}>
-                {i18next.t("payment:Return to Website")}
+                {i18next.t("order:View Order")}
+              </Button>,
+              <Button key="orderList" onClick={() => {
+                this.goToOrderList();
+              }} style={{marginLeft: "10px"}}>
+                {i18next.t("order:Return to Order List")}
               </Button>,
             ]}
           />
@@ -267,13 +293,18 @@ class PaymentResultPage extends React.Component {
           }
           <Result
             status="error"
-            title={`${i18next.t("payment:The payment has failed")}: ${payment.productDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
+            title={`${i18next.t("payment:The payment has failed")}: ${payment.productsDisplayName}, ${i18next.t("payment:the current state is")}: ${payment.state}`}
             subTitle={`${i18next.t("payment:Failed reason")}: ${payment.message}`}
             extra={[
-              <Button type="primary" key="returnUrl" onClick={() => {
-                this.goToPaymentUrl(payment);
+              <Button type="primary" key="viewOrder" onClick={() => {
+                this.goToViewOrder();
               }}>
-                {i18next.t("payment:Return to Website")}
+                {i18next.t("order:View Order")}
+              </Button>,
+              <Button key="orderList" onClick={() => {
+                this.goToOrderList();
+              }} style={{marginLeft: "10px"}}>
+                {i18next.t("order:Return to Order List")}
               </Button>,
             ]}
           />

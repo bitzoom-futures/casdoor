@@ -15,12 +15,12 @@
 package routers
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/beego/beego/context"
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/casdoor/casdoor/object"
 	"github.com/casdoor/casdoor/util"
-	"github.com/casvisor/casvisor-go-sdk/casvisorsdk"
 )
 
 func getUser(ctx *context.Context) (username string) {
@@ -37,6 +37,27 @@ func getUser(ctx *context.Context) (username string) {
 	}
 
 	return
+}
+
+func userMutationRecordIdentity(action string, rawObject string) (string, string, bool) {
+	switch action {
+	case "update-user", "delete-user":
+	default:
+		return "", "", false
+	}
+
+	var target struct {
+		Owner string `json:"owner"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(rawObject), &target); err != nil {
+		return "", "", false
+	}
+	if target.Owner == "" || target.Name == "" {
+		return "", "", false
+	}
+
+	return target.Owner, target.Name, true
 }
 
 func getUserByClientIdSecret(ctx *context.Context) string {
@@ -65,6 +86,22 @@ func RecordMessage(ctx *context.Context) {
 
 	userId := getUser(ctx)
 
+	// Special handling for set-password endpoint to capture target user
+	if ctx.Request.URL.Path == "/api/set-password" {
+		// Parse form if not already parsed
+		if err := ctx.Request.ParseForm(); err != nil {
+			fmt.Printf("RecordMessage() error parsing form: %s\n", err.Error())
+		} else {
+			userOwner := ctx.Request.Form.Get("userOwner")
+			userName := ctx.Request.Form.Get("userName")
+
+			if userOwner != "" && userName != "" {
+				targetUserId := util.GetId(userOwner, userName)
+				ctx.Input.SetParam("recordTargetUserId", targetUserId)
+			}
+		}
+	}
+
 	ctx.Input.SetParam("recordUserId", userId)
 }
 
@@ -76,7 +113,24 @@ func AfterRecordMessage(ctx *context.Context) {
 	}
 
 	userId := ctx.Input.Params()["recordUserId"]
-	if userId != "" {
+	targetUserId := ctx.Input.Params()["recordTargetUserId"]
+	detail := ctx.Input.Params()["recordFailureReason"]
+	if detail != "" {
+		record.Detail = detail
+	}
+
+	// For set-password endpoint, use target user if available
+	// We use defensive error handling here (log instead of panic) because target user
+	// parsing is a new feature. If it fails, we gracefully fall back to the regular
+	// userId flow or empty user/org fields, maintaining backward compatibility.
+	if record.Action == "set-password" && targetUserId != "" {
+		owner, user, err := util.GetOwnerAndNameFromIdWithError(targetUserId)
+		if err != nil {
+			fmt.Printf("AfterRecordMessage() error parsing target user %s: %s\n", targetUserId, err.Error())
+		} else {
+			record.Organization, record.User = owner, user
+		}
+	} else if userId != "" {
 		owner, user, err := util.GetOwnerAndNameFromIdWithError(userId)
 		if err != nil {
 			panic(err)
@@ -84,7 +138,11 @@ func AfterRecordMessage(ctx *context.Context) {
 		record.Organization, record.User = owner, user
 	}
 
-	var record2 *casvisorsdk.Record
+	if owner, user, ok := userMutationRecordIdentity(record.Action, record.Object); ok {
+		record.Organization, record.User = owner, user
+	}
+
+	var record2 *object.Record
 	recordSignup := ctx.Input.Params()["recordSignup"]
 	if recordSignup == "true" {
 		record2 = object.CopyRecord(record)

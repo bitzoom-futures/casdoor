@@ -38,11 +38,14 @@ type Token struct {
 	AccessTokenHash  string `xorm:"varchar(100) index" json:"accessTokenHash"`
 	RefreshTokenHash string `xorm:"varchar(100) index" json:"refreshTokenHash"`
 	ExpiresIn        int    `json:"expiresIn"`
-	Scope            string `xorm:"varchar(100)" json:"scope"`
+	Scope            string `xorm:"varchar(300)" json:"scope"`
 	TokenType        string `xorm:"varchar(100)" json:"tokenType"`
+	GrantType        string `xorm:"varchar(100)" json:"grantType"`
 	CodeChallenge    string `xorm:"varchar(100)" json:"codeChallenge"`
 	CodeIsUsed       bool   `json:"codeIsUsed"`
 	CodeExpireIn     int64  `json:"codeExpireIn"`
+	Resource         string `xorm:"varchar(255)" json:"resource"`           // RFC 8707 Resource Indicator
+	DPoPJkt          string `xorm:"varchar(255) 'dpop_jkt'" json:"dPoPJkt"` // RFC 9449 DPoP JWK thumbprint binding
 }
 
 func GetTokenCount(owner, organization, field, value string) (int64, error) {
@@ -106,6 +109,26 @@ func GetTokenByAccessToken(accessToken string) (*Token, error) {
 		return nil, nil
 	}
 	return &token, nil
+}
+
+// IsUserActive checks whether the token's end user is still allowed to use it, a token issued to
+// a forbidden, soft-deleted or removed user is treated as inactive. The tokens of the
+// "client_credentials" grant are not bound to an end user, so they are always active.
+// Refs: https://datatracker.ietf.org/doc/html/rfc7662
+func (token *Token) IsUserActive() (bool, error) {
+	if token.GrantType == "client_credentials" || token.User == "" {
+		return true, nil
+	}
+
+	user, err := getUser(token.Organization, token.User)
+	if err != nil {
+		return false, err
+	}
+	if user == nil {
+		return false, nil
+	}
+
+	return !user.IsForbidden && !user.IsDeleted, nil
 }
 
 func GetTokenByRefreshToken(refreshToken string) (*Token, error) {
@@ -226,11 +249,33 @@ func DeleteToken(token *Token) (bool, error) {
 	return affected != 0, nil
 }
 
+func GetActiveTokensByUser(organization, username string) ([]*Token, error) {
+	tokens := []*Token{}
+	err := ormer.Engine.Where(fmt.Sprintf("organization = ? and %s = ? and expires_in > 0", quoteColumn("user")), organization, username).Find(&tokens)
+	return tokens, err
+}
+
 func ExpireTokenByUser(owner, username string) (bool, error) {
-	affected, err := ormer.Engine.Where("organization = ? and user = ?", owner, username).Cols("expires_in").Update(&Token{ExpiresIn: 0})
+	affected, err := ormer.Engine.Where(fmt.Sprintf("organization = ? and %s = ?", quoteColumn("user")), owner, username).Cols("expires_in").Update(&Token{ExpiresIn: 0})
 	if err != nil {
 		return false, err
 	}
 
 	return affected != 0, nil
+}
+
+// ExpireTokenByUserAndApplication expires the user's tokens in one application, "owner" is the organization of the user
+func ExpireTokenByUserAndApplication(owner string, username string, application string) (bool, error) {
+	affected, err := ormer.Engine.Where(fmt.Sprintf("organization = ? and %s = ? and application = ? and expires_in > 0", quoteColumn("user")), owner, username, application).Cols("expires_in").Update(&Token{ExpiresIn: 0})
+	if err != nil {
+		return false, err
+	}
+
+	return affected != 0, nil
+}
+
+// updateTokenDPoP updates the token_type and dpop_jkt columns for DPoP binding (RFC 9449).
+func updateTokenDPoP(token *Token) error {
+	_, err := ormer.Engine.ID(core.PK{token.Owner, token.Name}).Cols("token_type", "dpop_jkt").Update(token)
+	return err
 }
