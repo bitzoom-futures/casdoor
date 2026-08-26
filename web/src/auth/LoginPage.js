@@ -1350,7 +1350,6 @@ class LoginPage extends React.Component {
                     onClick={(e) => {
                       const agreementChecked =
                         this.form.current.getFieldValue("agreement");
-
                       if (
                         agreementChecked !== undefined &&
                         typeof agreementChecked === "boolean" &&
@@ -1369,26 +1368,24 @@ class LoginPage extends React.Component {
                       24,
                       null,
                       signinItem.rule,
-                      this.props.location
+                      this.props.location,
+                      undefined,
+                      i18next
+                        .t("signup:Sign up with {type}")
+                        .replace(
+                          "{type}",
+                          providerItem.provider.type !== ""
+                            ? providerItem.provider.type
+                            : providerItem.provider.displayName
+                        ),
+                      {
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }
                     )}
-                    {providerItem.provider.type === "Google" ? (
-                      <span
-                        style={{
-                          margin: "0 0 0 4px",
-                          lineHeight: "24px",
-                          fontSize: "16px",
-                        }}
-                      >
-                        {i18next
-                          .t("signup:Sign up with {type}")
-                          .replace(
-                            "{type}",
-                            providerItem.provider.type !== ""
-                              ? providerItem.provider.type
-                              : providerItem.provider.displayName
-                          )}
-                      </span>
-                    ) : null}
                   </Button>
                 );
               })}

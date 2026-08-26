@@ -1458,26 +1458,24 @@ class SignupPage extends React.Component {
                 24,
                 null,
                 signupItem.rule,
-                this.props.location
+                this.props.location,
+                undefined,
+                i18next
+                  .t("signup:Sign up with {type}")
+                  .replace(
+                    "{type}",
+                    providerItem.provider.type !== ""
+                      ? providerItem.provider.type
+                      : providerItem.provider.displayName
+                  ),
+                {
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }
               )}
-              {providerItem.provider.type === "Google" ? (
-                <span
-                  style={{
-                    margin: "0 0 0 4px",
-                    lineHeight: "24px",
-                    fontSize: "16px",
-                  }}
-                >
-                  {i18next
-                    .t("signup:Sign up with {type}")
-                    .replace(
-                      "{type}",
-                      providerItem.provider.type !== ""
-                        ? providerItem.provider.type
-                        : providerItem.provider.displayName
-                    )}
-                </span>
-              ) : null}
             </Button>
           );
         });
