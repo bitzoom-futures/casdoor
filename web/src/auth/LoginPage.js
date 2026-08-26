@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { Suspense, lazy } from "react";
+import React, {Suspense, lazy} from "react";
 import {
   Button,
   Checkbox,
   Col,
+  Divider,
   Form,
   Input,
   Result,
-  Spin,
   Tabs,
-  message,
+  message
 } from "antd";
 // import { ArrowLeftOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { withRouter } from "react-router-dom";
+import {ArrowLeftOutlined} from "@ant-design/icons";
+import {withRouter} from "react-router-dom";
 import * as UserWebauthnBackend from "../backend/UserWebauthnBackend";
 import OrganizationSelect from "../common/select/OrganizationSelect";
 import * as Conf from "../Conf";
@@ -41,22 +41,23 @@ import * as AgreementModal from "../common/modal/AgreementModal";
 import SelfLoginButton from "./SelfLoginButton";
 import i18next from "i18next";
 import CustomGithubCorner from "../common/CustomGithubCorner";
-import { SendCodeInput } from "../common/SendCodeInput";
+import {SendCodeInput} from "../common/SendCodeInput";
+import Loading from "../common/Loading";
 import LanguageSelect from "../common/select/LanguageSelect";
-import { CaptchaModal } from "../common/modal/CaptchaModal";
+import {CaptchaModal} from "../common/modal/CaptchaModal";
 import RedirectForm from "../common/RedirectForm";
-import { RequiredMfa } from "./mfa/MfaAuthVerifyForm";
-import { GoogleOneTapLoginVirtualButton } from "./GoogleLoginButton";
+import {RequiredMfa} from "./mfa/MfaAuthVerifyForm";
+import {GoogleOneTapLoginVirtualButton} from "./GoogleLoginButton";
 import * as ProviderButton from "./ProviderButton";
-import { createFormAndSubmit, goToLink } from "../Setting";
+import {createFormAndSubmit, goToLink} from "../Setting";
 import WeChatLoginPanel from "./WeChatLoginPanel";
 import DeviceLoginPanel from "./DeviceLoginPanel";
-import { CountryCodeSelect } from "../common/select/CountryCodeSelect";
+import {CountryCodeSelect} from "../common/select/CountryCodeSelect";
 const FaceRecognitionCommonModal = lazy(
-  () => import("../common/modal/FaceRecognitionCommonModal"),
+  () => import("../common/modal/FaceRecognitionCommonModal")
 );
 const FaceRecognitionModal = lazy(
-  () => import("../common/modal/FaceRecognitionModal"),
+  () => import("../common/modal/FaceRecognitionModal")
 );
 
 class LoginPage extends React.Component {
@@ -104,7 +105,7 @@ class LoginPage extends React.Component {
 
     localStorage.setItem(
       "signinUrl",
-      window.location.pathname + window.location.search,
+      window.location.pathname + window.location.search
     );
 
     this.form = React.createRef();
@@ -128,7 +129,7 @@ class LoginPage extends React.Component {
       } else {
         Setting.showMessage(
           "error",
-          `${i18next.t("general:Unknown authentication type")}: ${this.state.type}`,
+          `${i18next.t("general:Unknown authentication type")}: ${this.state.type}`
         );
       }
     }
@@ -140,7 +141,7 @@ class LoginPage extends React.Component {
       this.state.loginMethod === undefined
     ) {
       const application = this.getApplicationObj();
-      this.setState({ loginMethod: this.getDefaultLoginMethod(application) });
+      this.setState({loginMethod: this.getDefaultLoginMethod(application)});
     }
     if (prevProps.application !== this.props.application) {
       this.setState({
@@ -172,8 +173,8 @@ class LoginPage extends React.Component {
         if (params.get("popup") === "1") {
           window.addEventListener("beforeunload", () => {
             this.sendPopupData(
-              { type: "windowClosed" },
-              params.get("redirect_uri"),
+              {type: "windowClosed"},
+              params.get("redirect_uri")
             );
           });
         }
@@ -207,10 +208,10 @@ class LoginPage extends React.Component {
     if (this.state.type === "cas") {
       loginParams = Util.getCasLoginParameters(
         "admin",
-        this.state.applicationName,
+        this.state.applicationName
       );
     } else if (this.state.type === "device") {
-      loginParams = { userCode: this.state.userCode, type: this.state.type };
+      loginParams = {userCode: this.state.userCode, type: this.state.type};
     } else {
       loginParams = Util.getOAuthGetParameters();
     }
@@ -240,7 +241,7 @@ class LoginPage extends React.Component {
     if (this.state.owner === null || this.state.type === "saml") {
       ApplicationBackend.getApplication(
         "admin",
-        this.state.applicationName,
+        this.state.applicationName
       ).then((res) => {
         if (res.status === "error") {
           this.onUpdateApplication(null);
@@ -266,7 +267,7 @@ class LoginPage extends React.Component {
 
             this.props.history.push("/404");
           }
-        },
+        }
       );
     }
   }
@@ -278,30 +279,30 @@ class LoginPage extends React.Component {
   getDefaultLoginMethod(application) {
     if (application?.signinMethods?.length > 0) {
       switch (application?.signinMethods[0].name) {
-        case "Password":
-          return "password";
-        case "Verification code": {
-          switch (application?.signinMethods[0].rule) {
-            case "All":
-              return "verificationCode"; // All
-            case "Email only":
-              return "verificationCodeEmail";
-            case "Phone only":
-              return "verificationCodePhone";
-          }
-          break;
+      case "Password":
+        return "password";
+      case "Verification code": {
+        switch (application?.signinMethods[0].rule) {
+        case "All":
+          return "verificationCode"; // All
+        case "Email only":
+          return "verificationCodeEmail";
+        case "Phone only":
+          return "verificationCodePhone";
         }
-        case "WebAuthn":
-          return "webAuthn";
-        case "LDAP":
-          return "ldap";
-        case "Face ID":
-          return "faceId";
-        case "Device login":
-          if (application?.signinMethods[0]?.rule === "Tab") {
-            return "device";
-          }
-          break;
+        break;
+      }
+      case "WebAuthn":
+        return "webAuthn";
+      case "LDAP":
+        return "ldap";
+      case "Face ID":
+        return "faceId";
+      case "Device login":
+        if (application?.signinMethods[0]?.rule === "Tab") {
+          return "device";
+        }
+        break;
       }
     }
 
@@ -331,16 +332,16 @@ class LoginPage extends React.Component {
       return defaultPlaceholder;
     }
     switch (this.state.loginMethod) {
-      case "verificationCode":
-        return i18next.t("login:Email or phone");
-      case "verificationCodeEmail":
-        return i18next.t("general:Email");
-      case "verificationCodePhone":
-        return i18next.t("general:Phone");
-      case "ldap":
-        return i18next.t("login:LDAP username, Email or phone");
-      default:
-        return i18next.t("login:username, Email or phone");
+    case "verificationCode":
+      return i18next.t("login:Email or phone");
+    case "verificationCodeEmail":
+      return i18next.t("general:Email");
+    case "verificationCodePhone":
+      return i18next.t("general:Phone");
+    case "ldap":
+      return i18next.t("login:LDAP username, Email or phone");
+    default:
+      return i18next.t("login:username, Email or phone");
     }
   }
 
@@ -349,6 +350,9 @@ class LoginPage extends React.Component {
   }
 
   onUpdateApplication(application) {
+    if (application !== null) {
+      application.logo = Setting.getLogo(this.props.themeAlgorithm);
+    }
     this.props.onUpdateApplication(application);
     if (application === null) {
       return;
@@ -356,7 +360,7 @@ class LoginPage extends React.Component {
     for (const idx in application.providers) {
       const provider = application.providers[idx];
       if (provider.provider?.category === "Face ID") {
-        this.setState({ haveFaceIdProvider: true });
+        this.setState({haveFaceIdProvider: true});
         break;
       }
     }
@@ -443,19 +447,19 @@ class LoginPage extends React.Component {
             // Consent required, redirect to consent page after the account state is synced.
             Setting.goToLinkSoft(
               ths,
-              `/consent/${application.name}?${window.location.search.substring(1)}`,
+              `/consent/${application.name}?${window.location.search.substring(1)}`
             );
           } else {
             Setting.showMessage(
               "error",
-              `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+              `${i18next.t("application:Failed to sign in")}: ${res.msg}`
             );
           }
         })
         .catch((err) => {
           Setting.showMessage(
             "error",
-            `${i18next.t("application:Failed to sign in")}: ${err}`,
+            `${i18next.t("application:Failed to sign in")}: ${err}`
           );
         });
       return;
@@ -474,20 +478,20 @@ class LoginPage extends React.Component {
             } else {
               Setting.goToLinkSoft(
                 ths,
-                `/prompt/${application.name}?redirectUri=${oAuthParams.redirectUri}&code=${code}&state=${oAuthParams.state}`,
+                `/prompt/${application.name}?redirectUri=${oAuthParams.redirectUri}&code=${code}&state=${oAuthParams.state}`
               );
             }
           } else {
             Setting.showMessage(
               "error",
-              `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+              `${i18next.t("application:Failed to sign in")}: ${res.msg}`
             );
           }
         })
         .catch((err) => {
           Setting.showMessage(
             "error",
-            `${i18next.t("application:Failed to sign in")}: ${err}`,
+            `${i18next.t("application:Failed to sign in")}: ${err}`
           );
         });
     } else {
@@ -512,16 +516,16 @@ class LoginPage extends React.Component {
         this.sendPopupData(
           {
             type: "loginSuccess",
-            data: { code: code, state: oAuthParams.state },
+            data: {code: code, state: oAuthParams.state},
           },
-          oAuthParams.redirectUri,
+          oAuthParams.redirectUri
         );
       }
     }
   }
 
   onFinish(values) {
-    this.setState({ loginLoading: true });
+    this.setState({loginLoading: true});
     if (this.state.loginMethod === "webAuthn") {
       let username = this.state.username;
       if (username === null || username === "") {
@@ -545,7 +549,7 @@ class LoginPage extends React.Component {
           headers: {
             "Accept-Language": Setting.getAcceptLanguage(),
           },
-        },
+        }
       )
         .then((res) => res.json())
         .then((res) => {
@@ -572,7 +576,7 @@ class LoginPage extends React.Component {
         Obfuscator.encryptByPasswordObfuscator(
           organization?.passwordObfuscatorType,
           organization?.passwordObfuscatorKey,
-          values["password"],
+          values["password"]
         );
       if (errorMessage.length > 0) {
         Setting.showMessage("error", errorMessage);
@@ -604,9 +608,9 @@ class LoginPage extends React.Component {
         ) {
           Setting.showMessage(
             "error",
-            i18next.t("general:Please complete the captcha correctly"),
+            i18next.t("general:Please complete the captcha correctly")
           );
-          this.setState({ loginLoading: false });
+          this.setState({loginLoading: false});
           return;
         }
         values["captchaType"] = this.state?.captchaValues?.captchaType;
@@ -622,7 +626,7 @@ class LoginPage extends React.Component {
     values["language"] = this.state.userLang ?? "";
     const usedCaptcha = this.state.captchaValues !== undefined;
     const inlineCaptchaEnabled = Setting.isInlineCaptchaEnabled(
-      this.getApplicationObj(),
+      this.getApplicationObj()
     );
     const shouldRefreshCaptcha =
       usedCaptcha &&
@@ -656,7 +660,7 @@ class LoginPage extends React.Component {
           } else {
             Setting.showMessage(
               "error",
-              `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+              `${i18next.t("application:Failed to sign in")}: ${res.msg}`
             );
             if (shouldRefreshCaptcha) {
               this.refreshInlineCaptcha();
@@ -664,7 +668,7 @@ class LoginPage extends React.Component {
           }
         })
         .finally(() => {
-          this.setState({ loginLoading: false });
+          this.setState({loginLoading: false});
         });
     } else {
       // OAuth
@@ -679,7 +683,7 @@ class LoginPage extends React.Component {
             if (responseType === "login") {
               Setting.showMessage(
                 "success",
-                i18next.t("application:Logged in successfully"),
+                i18next.t("application:Logged in successfully")
               );
               this.props.onLoginSuccess();
             } else if (responseType === "code") {
@@ -687,7 +691,7 @@ class LoginPage extends React.Component {
             } else if (responseType === "device") {
               Setting.showMessage(
                 "success",
-                i18next.t("application:Logged in successfully"),
+                i18next.t("application:Logged in successfully")
               );
               this.setState({
                 userCodeStatus: "success",
@@ -711,7 +715,7 @@ class LoginPage extends React.Component {
                 createFormAndSubmit(oAuthParams?.redirectUri, params);
               } else {
                 Setting.goToLink(
-                  `${oAuthParams.redirectUri}#${amendatoryResponseType}=${accessToken}&state=${oAuthParams.state}&token_type=bearer`,
+                  `${oAuthParams.redirectUri}#${amendatoryResponseType}=${accessToken}&state=${oAuthParams.state}&token_type=bearer`
                 );
               }
             } else if (responseType === "saml") {
@@ -729,7 +733,7 @@ class LoginPage extends React.Component {
                 const SAMLResponse = res.data;
                 const redirectUri = res.data2.redirectUrl;
                 Setting.goToLink(
-                  `${redirectUri}${redirectUri.includes("?") ? "&" : "?"}SAMLResponse=${encodeURIComponent(SAMLResponse)}&RelayState=${encodeURIComponent(oAuthParams.relayState)}`,
+                  `${redirectUri}${redirectUri.includes("?") ? "&" : "?"}SAMLResponse=${encodeURIComponent(SAMLResponse)}&RelayState=${encodeURIComponent(oAuthParams.relayState)}`
                 );
               }
             }
@@ -740,7 +744,7 @@ class LoginPage extends React.Component {
           } else {
             Setting.showMessage(
               "error",
-              `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+              `${i18next.t("application:Failed to sign in")}: ${res.msg}`
             );
             if (shouldRefreshCaptcha) {
               this.refreshInlineCaptcha();
@@ -749,7 +753,7 @@ class LoginPage extends React.Component {
         })
         .finally(() => {
           localStorage.setItem("lastLoginOrg", values?.organization || "");
-          this.setState({ loginLoading: false });
+          this.setState({loginLoading: false});
         });
     }
   }
@@ -800,14 +804,14 @@ class LoginPage extends React.Component {
     const application = this.getApplicationObj();
     if (window.location.pathname.startsWith("/login/saml/authorize")) {
       Setting.goToLink(
-        `/login/saml/authorize/${name}/${application.name}-org-${name}?${searchParams.toString()}`,
+        `/login/saml/authorize/${name}/${application.name}-org-${name}?${searchParams.toString()}`
       );
       return;
     }
 
     if (window.location.pathname.startsWith("/cas")) {
       Setting.goToLink(
-        `/cas/${application.name}-org-${name}/${name}/login?${searchParams.toString()}`,
+        `/cas/${application.name}-org-${name}/${name}/login?${searchParams.toString()}`
       );
       return;
     }
@@ -881,7 +885,7 @@ class LoginPage extends React.Component {
             languages={application.organizationObj.languages}
             mode={signinItem.rule}
             onClick={(key) => {
-              this.setState({ userLang: key });
+              this.setState({userLang: key});
               Setting.setSigninLanguage(key);
             }}
           />
@@ -935,13 +939,13 @@ class LoginPage extends React.Component {
                   {
                     required: true,
                     message: i18next.t(
-                      "signup:Please select your country code!",
+                      "signup:Please select your country code!"
                     ),
                   },
                 ]}
               >
                 <CountryCodeSelect
-                  style={{ width: "35%" }}
+                  style={{width: "35%"}}
                   countryCodes={
                     this.getApplicationObj().organizationObj.countryCodes
                   }
@@ -955,10 +959,10 @@ class LoginPage extends React.Component {
                   {
                     required: true,
                     message: i18next.t(
-                      "signup:Please input your phone number!",
+                      "signup:Please input your phone number!"
                     ),
                   },
-                  ({ getFieldValue }) => ({
+                  ({getFieldValue}) => ({
                     validator: (_, value) => {
                       if (!value) {
                         return Promise.resolve();
@@ -968,16 +972,16 @@ class LoginPage extends React.Component {
                         value &&
                         !Setting.isValidPhone(
                           value,
-                          getFieldValue("countryCode"),
+                          getFieldValue("countryCode")
                         )
                       ) {
-                        this.setState({ validEmailOrPhone: false });
+                        this.setState({validEmailOrPhone: false});
                         return Promise.reject(
-                          i18next.t("signup:The input is not valid Phone!"),
+                          i18next.t("signup:The input is not valid Phone!")
                         );
                       }
 
-                      this.setState({ validEmailOrPhone: true });
+                      this.setState({validEmailOrPhone: true});
                       return Promise.resolve();
                     },
                   }),
@@ -986,8 +990,8 @@ class LoginPage extends React.Component {
                 <Input
                   className="signup-phone-input"
                   placeholder={signinItem.placeholder}
-                  style={{ width: "65%", textAlign: "left" }}
-                  onChange={(e) => this.setState({ username: e.target.value })}
+                  style={{width: "65%", textAlign: "left"}}
+                  onChange={(e) => this.setState({username: e.target.value})}
                 />
               </Form.Item>
             </Input.Group>
@@ -1016,18 +1020,18 @@ class LoginPage extends React.Component {
                 required: this.state.loginMethod !== "webAuthn",
                 message: () => {
                   switch (this.state.loginMethod) {
-                    case "verificationCodeEmail":
-                      return i18next.t("login:Please input your Email!");
-                    case "verificationCodePhone":
-                      return i18next.t("login:Please input your Phone!");
-                    case "ldap":
-                      return i18next.t(
-                        "login:Please input your LDAP username!",
-                      );
-                    default:
-                      return i18next.t(
-                        "login:Please input your Email or Phone!",
-                      );
+                  case "verificationCodeEmail":
+                    return i18next.t("login:Please input your Email!");
+                  case "verificationCodePhone":
+                    return i18next.t("login:Please input your Phone!");
+                  case "ldap":
+                    return i18next.t(
+                      "login:Please input your LDAP username!"
+                    );
+                  default:
+                    return i18next.t(
+                      "login:Please input your Email or Phone!"
+                    );
                   }
                 },
               },
@@ -1042,43 +1046,43 @@ class LoginPage extends React.Component {
                       !Setting.isValidEmail(value) &&
                       !Setting.isValidPhone(value)
                     ) {
-                      this.setState({ validEmailOrPhone: false });
+                      this.setState({validEmailOrPhone: false});
                       return Promise.reject(
                         i18next.t(
-                          "login:The input is not valid Email or phone number!",
-                        ),
+                          "login:The input is not valid Email or phone number!"
+                        )
                       );
                     }
 
                     if (Setting.isValidEmail(value)) {
-                      this.setState({ validEmail: true });
+                      this.setState({validEmail: true});
                     } else {
-                      this.setState({ validEmail: false });
+                      this.setState({validEmail: false});
                     }
                   } else if (
                     this.state.loginMethod === "verificationCodeEmail"
                   ) {
                     if (!Setting.isValidEmail(value)) {
-                      this.setState({ validEmail: false });
-                      this.setState({ validEmailOrPhone: false });
+                      this.setState({validEmail: false});
+                      this.setState({validEmailOrPhone: false});
                       return Promise.reject(
-                        i18next.t("login:The input is not valid Email!"),
+                        i18next.t("login:The input is not valid Email!")
                       );
                     } else {
-                      this.setState({ validEmail: true });
+                      this.setState({validEmail: true});
                     }
                   } else if (
                     this.state.loginMethod === "verificationCodePhone"
                   ) {
                     if (!Setting.isValidPhone(value)) {
-                      this.setState({ validEmailOrPhone: false });
+                      this.setState({validEmailOrPhone: false});
                       return Promise.reject(
-                        i18next.t("login:The input is not valid phone number!"),
+                        i18next.t("login:The input is not valid phone number!")
                       );
                     }
                   }
 
-                  this.setState({ validEmailOrPhone: true });
+                  this.setState({validEmailOrPhone: true});
                   return Promise.resolve();
                 },
               },
@@ -1088,6 +1092,7 @@ class LoginPage extends React.Component {
               id="input"
               className="login-username-input"
               variant="filled"
+              allowClear
               placeholder={this.getPlaceholder(signinItem.placeholder)}
               onChange={(e) => {
                 this.setState({
@@ -1156,14 +1161,14 @@ class LoginPage extends React.Component {
             </Form.Item>
             {signinItem.visible
               ? Setting.renderForgetLink(
-                  application,
-                  signinItem.label
-                    ? signinItem.label
-                    : i18next.t("login:Forgot password?"),
-                  {
-                    color: Setting.getHintTextColor(this.props.themeAlgorithm),
-                  },
-                )
+                application,
+                signinItem.label
+                  ? signinItem.label
+                  : i18next.t("login:Forgot password?"),
+                {
+                  color: Setting.getHintTextColor(this.props.themeAlgorithm),
+                }
+              )
               : null}
           </div>
         </div>
@@ -1210,28 +1215,28 @@ class LoginPage extends React.Component {
           </Button>
           {this.state.type === "device" ? (
             <Button
-              style={{ marginTop: 12 }}
+              style={{marginTop: 12}}
               block
               onClick={() => {
                 const cancelToken =
                   new URLSearchParams(this.props.location.search).get(
-                    "cancelToken",
+                    "cancelToken"
                   ) || "";
                 AuthBackend.cancelDeviceLogin(this.state.userCode, cancelToken)
                   .then((res) => {
                     if (res.status === "ok") {
-                      this.setState({ userCodeStatus: "canceled" });
+                      this.setState({userCodeStatus: "canceled"});
                     } else {
                       Setting.showMessage(
                         "error",
-                        res.msg || i18next.t("general:Failed to cancel"),
+                        res.msg || i18next.t("general:Failed to cancel")
                       );
                     }
                   })
                   .catch(() => {
                     Setting.showMessage(
                       "error",
-                      i18next.t("general:Failed to cancel"),
+                      i18next.t("general:Failed to cancel")
                     );
                   });
               }}
@@ -1248,7 +1253,7 @@ class LoginPage extends React.Component {
                     const values = this.state.values;
                     values["faceIdImage"] = faceIdImage;
                     this.login(values);
-                    this.setState({ openFaceRecognitionModal: false });
+                    this.setState({openFaceRecognitionModal: false});
                   }}
                   onCancel={() =>
                     this.setState({
@@ -1267,7 +1272,7 @@ class LoginPage extends React.Component {
                     values["faceId"] = faceId;
 
                     this.login(values);
-                    this.setState({ openFaceRecognitionModal: false });
+                    this.setState({openFaceRecognitionModal: false});
                   }}
                   onCancel={() =>
                     this.setState({
@@ -1284,7 +1289,7 @@ class LoginPage extends React.Component {
           {application?.signinItems
             .map(
               (signinItem) =>
-                signinItem.name === "Captcha" && signinItem.rule === "inline",
+                signinItem.name === "Captcha" && signinItem.rule === "inline"
             )
             .includes(true)
             ? null
@@ -1300,11 +1305,14 @@ class LoginPage extends React.Component {
       if (signinItem.rule === "None" || signinItem.rule === "") {
         signinItem.rule = showForm ? "small" : "big";
       }
+      const hasVisibleProviders = (application.providers ?? []).some(
+        (providerItem) => this.isProviderVisible(providerItem)
+      );
       const searchParams = new URLSearchParams(window.location.search);
       const providerHint = searchParams.get("provider_hint");
 
       return (
-        <div key={resultItemKey}>
+        <div key={resultItemKey} className="login-providers-box">
           <div
             dangerouslySetInnerHTML={{
               __html:
@@ -1315,6 +1323,11 @@ class LoginPage extends React.Component {
                 "</style>",
             }}
           />
+          {showForm && hasVisibleProviders ? (
+            <Divider className="login-more-divider" plain>
+              {i18next.t("login:More sign-in methods")}
+            </Divider>
+          ) : null}
           <Form.Item>
             {application.providers
               .filter((providerItem) => this.isProviderVisible(providerItem))
@@ -1324,13 +1337,15 @@ class LoginPage extends React.Component {
                     Provider.getAuthUrl(
                       application,
                       providerItem.provider,
-                      this.state.mode ?? "signup",
-                    ),
+                      this.state.mode ?? "signup"
+                    )
                   );
                   return;
                 }
                 return (
-                  <span
+                  <Button
+                    style={{width: "100%"}}
+                    variant="outlined"
                     key={id}
                     onClick={(e) => {
                       const agreementChecked =
@@ -1343,7 +1358,7 @@ class LoginPage extends React.Component {
                       ) {
                         e.preventDefault();
                         message.error(
-                          i18next.t("signup:Please accept the agreement!"),
+                          i18next.t("signup:Please accept the agreement!")
                         );
                       }
                     }}
@@ -1351,13 +1366,30 @@ class LoginPage extends React.Component {
                     {ProviderButton.renderProviderLogo(
                       providerItem.provider,
                       application,
-                      null,
+                      24,
                       null,
                       signinItem.rule,
-                      this.props.location,
-                      this.state.mode ?? "signup",
+                      this.props.location
                     )}
-                  </span>
+                    {providerItem.provider.type === "Google" ? (
+                      <span
+                        style={{
+                          margin: "0 0 0 4px",
+                          lineHeight: "24px",
+                          fontSize: "16px",
+                        }}
+                      >
+                        {i18next
+                          .t("signup:Sign up with {type}")
+                          .replace(
+                            "{type}",
+                            providerItem.provider.type !== ""
+                              ? providerItem.provider.type
+                              : providerItem.provider.displayName
+                          )}
+                      </span>
+                    ) : null}
+                  </Button>
                 );
               })}
             {this.renderOtherFormProvider(application)}
@@ -1370,14 +1402,14 @@ class LoginPage extends React.Component {
       return (
         <div
           key={resultItemKey}
-          dangerouslySetInnerHTML={{ __html: signinItem.customCss }}
+          dangerouslySetInnerHTML={{__html: signinItem.customCss}}
         />
       );
     } else if (signinItem.name === "Signup link") {
       return (
         <div
           key={resultItemKey}
-          style={{ width: "100%" }}
+          style={{width: "100%"}}
           className="login-signup-link"
         >
           <div
@@ -1398,11 +1430,11 @@ class LoginPage extends React.Component {
         <Form.Item>
           <div
             key={resultItemKey}
-            style={{ width: "100%" }}
+            style={{width: "100%"}}
             className="login-organization-select"
           >
             <OrganizationSelect
-              style={{ width: "100%" }}
+              style={{width: "100%"}}
               initValue={application.organization}
               onSelect={(value) => {
                 this.switchLoginOrganization(value);
@@ -1425,7 +1457,7 @@ class LoginPage extends React.Component {
           status="error"
           title={i18next.t("application:Sign Up Error")}
           subTitle={i18next.t(
-            "application:The application does not allow to sign up new account",
+            "application:The application does not allow to sign up new account"
           )}
           extra={[
             <Button
@@ -1487,7 +1519,7 @@ class LoginPage extends React.Component {
               .map(
                 (signinItem) =>
                   signinItem.name === "Forgot password?" &&
-                  signinItem.rule === "Auto sign in - False",
+                  signinItem.rule === "Auto sign in - False"
               )
               ?.includes(true),
             username:
@@ -1498,11 +1530,11 @@ class LoginPage extends React.Component {
           onFinish={(values) => {
             this.onFinish(values);
           }}
-          style={{ width: `${loginWidth}px` }}
+          style={{width: `${loginWidth}px`}}
           size="large"
           ref={this.form}
         >
-          {this.renderDeviceLoginHeader(application)}
+          <div className="login-mobile-title">{i18next.t("login:Sign In")}</div>
           <Form.Item
             hidden={true}
             name="application"
@@ -1510,7 +1542,7 @@ class LoginPage extends React.Component {
               {
                 required: true,
                 message: i18next.t(
-                  "application:Please input your application!",
+                  "application:Please input your application!"
                 ),
               },
             ]}
@@ -1522,24 +1554,24 @@ class LoginPage extends React.Component {
               {
                 required: true,
                 message: i18next.t(
-                  "application:Please input your organization!",
+                  "application:Please input your organization!"
                 ),
               },
             ]}
           ></Form.Item>
 
           {application.signinItems?.map((signinItem) =>
-            this.renderFormItem(application, signinItem),
+            this.renderFormItem(application, signinItem)
           )}
         </Form>
       );
     } else {
       return (
-        <div style={{ marginTop: "20px" }}>
-          <div style={{ fontSize: 16, textAlign: "left" }}>
+        <div style={{marginTop: "20px"}}>
+          <div style={{fontSize: 16, textAlign: "left"}}>
             {i18next.t("login:To access")}&nbsp;
             <a target="_blank" rel="noreferrer" href={application.homepageUrl}>
-              <span style={{ fontWeight: "bold" }}>
+              <span style={{fontWeight: "bold"}}>
                 {application.displayName}
               </span>
             </a>
@@ -1549,7 +1581,7 @@ class LoginPage extends React.Component {
           {application?.signinItems.map((signinItem) =>
             signinItem.name === "Providers" || signinItem.name === "Signup link"
               ? this.renderFormItem(application, signinItem)
-              : null,
+              : null
           )}
         </div>
       );
@@ -1565,13 +1597,13 @@ class LoginPage extends React.Component {
     }
     const captchaProviderItems = Setting.getCaptchaProviderItems(application);
     const alwaysProviderItems = captchaProviderItems.filter(
-      (providerItem) => providerItem.rule === "Always",
+      (providerItem) => providerItem.rule === "Always"
     );
     const dynamicProviderItems = captchaProviderItems.filter(
-      (providerItem) => providerItem.rule === "Dynamic",
+      (providerItem) => providerItem.rule === "Dynamic"
     );
     const internetOnlyProviderItems = captchaProviderItems.filter(
-      (providerItem) => providerItem.rule === "Internet-Only",
+      (providerItem) => providerItem.rule === "Internet-Only"
     );
 
     // Select provider based on the active captcha rule, not fixed priority
@@ -1621,10 +1653,10 @@ class LoginPage extends React.Component {
           values["clientSecret"] = clientSecret;
 
           this.login(values);
-          this.setState({ openCaptchaModal: false });
+          this.setState({openCaptchaModal: false});
         }}
         onCancel={() =>
-          this.setState({ openCaptchaModal: false, loginLoading: false })
+          this.setState({openCaptchaModal: false, loginLoading: false})
         }
         isCurrentProvider={true}
         innerRef={this.captchaRef}
@@ -1648,7 +1680,7 @@ class LoginPage extends React.Component {
             </span>
             {Setting.renderSignupLink(
               application,
-              i18next.t("login:sign up now"),
+              i18next.t("login:sign up now")
             )}
           </React.Fragment>
         )}
@@ -1658,7 +1690,7 @@ class LoginPage extends React.Component {
 
   sendSilentSigninData(data) {
     if (Setting.inIframe()) {
-      const message = { tag: "Casdoor", type: "SilentSignin", data: data };
+      const message = {tag: "Casdoor", type: "SilentSignin", data: data};
       window.parent.postMessage(message, "*");
     }
   }
@@ -1690,20 +1722,20 @@ class LoginPage extends React.Component {
               createFormAndSubmit(oAuthParams?.redirectUri, params);
             } else {
               Setting.goToLink(
-                `${oAuthParams.redirectUri}#${amendatoryResponseType}=${accessToken}&state=${oAuthParams.state}&token_type=bearer`,
+                `${oAuthParams.redirectUri}#${amendatoryResponseType}=${accessToken}&state=${oAuthParams.state}&token_type=bearer`
               );
             }
           } else {
             Setting.showMessage(
               "success",
-              i18next.t("application:Logged in successfully"),
+              i18next.t("application:Logged in successfully")
             );
             this.props.onLoginSuccess();
           }
         } else {
           Setting.showMessage(
             "error",
-            `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+            `${i18next.t("application:Failed to sign in")}: ${res.msg}`
           );
         }
       })
@@ -1733,11 +1765,11 @@ class LoginPage extends React.Component {
 
     return (
       <div>
-        <div style={{ fontSize: 16, textAlign: "left" }}>
+        <div style={{fontSize: 16, textAlign: "left"}}>
           {this.state.type === "device"
             ? i18next.t(
-                "login:Continue with your current account to approve this sign-in",
-              )
+              "login:Continue with your current account to approve this sign-in"
+            )
             : i18next.t("login:Continue with")}
           &nbsp;:
         </div>
@@ -1753,7 +1785,7 @@ class LoginPage extends React.Component {
         </div>
         <br />
         <br />
-        <div style={{ fontSize: 16, textAlign: "left" }}>
+        <div style={{fontSize: 16, textAlign: "left"}}>
           {i18next.t("login:Or sign in with another account")}&nbsp;:
         </div>
       </div>
@@ -1766,14 +1798,14 @@ class LoginPage extends React.Component {
     }
 
     return (
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 8 }}>
+      <div style={{textAlign: "center", marginBottom: 16}}>
+        <h3 style={{marginBottom: 8}}>
           {i18next.t("login:Approve sign-in on this device")}
         </h3>
-        <div style={{ marginBottom: 4 }}>
+        <div style={{marginBottom: 4}}>
           <strong>{application.displayName}</strong>
         </div>
-        <div style={{ color: "#8c8c8c" }}>
+        <div style={{color: "#8c8c8c"}}>
           {i18next.t("login:Confirmation code")}: {this.state.userCode}
         </div>
       </div>
@@ -1785,7 +1817,7 @@ class LoginPage extends React.Component {
       !application?.signinMethods?.some(
         (signinMethod) =>
           signinMethod?.name === "Device login" &&
-          signinMethod.rule === "Login page",
+          signinMethod.rule === "Login page"
       ) ||
       this.state.type === "device"
     ) {
@@ -1818,7 +1850,7 @@ class LoginPage extends React.Component {
       {
         method: "GET",
         credentials: "include",
-      },
+      }
     )
       .then((res) => res.json())
       .then((credentialRequestOptions) => {
@@ -1827,16 +1859,16 @@ class LoginPage extends React.Component {
         }
         credentialRequestOptions.publicKey.challenge =
           UserWebauthnBackend.webAuthnBufferDecode(
-            credentialRequestOptions.publicKey.challenge,
+            credentialRequestOptions.publicKey.challenge
           );
 
         if (username) {
           credentialRequestOptions.publicKey.allowCredentials.forEach(
-            function (listItem) {
+            function(listItem) {
               listItem.id = UserWebauthnBackend.webAuthnBufferDecode(
-                listItem.id,
+                listItem.id
               );
-            },
+            }
           );
         }
 
@@ -1889,14 +1921,14 @@ class LoginPage extends React.Component {
               ) {
                 const accessToken = res.data;
                 Setting.goToLink(
-                  `${oAuthParams.redirectUri}#${responseType}=${accessToken}?state=${oAuthParams.state}&token_type=bearer`,
+                  `${oAuthParams.redirectUri}#${responseType}=${accessToken}?state=${oAuthParams.state}&token_type=bearer`
                 );
               } else {
                 Setting.showMessage(
                   "success",
                   i18next.t(
-                    "login:Successfully logged in with WebAuthn credentials",
-                  ),
+                    "login:Successfully logged in with WebAuthn credentials"
+                  )
                 );
                 Setting.goToLink("/");
               }
@@ -1907,7 +1939,7 @@ class LoginPage extends React.Component {
           .catch((error) => {
             Setting.showMessage(
               "error",
-              `${i18next.t("general:Failed to connect to server")}${error}`,
+              `${i18next.t("general:Failed to connect to server")}${error}`
             );
           });
       })
@@ -1927,7 +1959,7 @@ class LoginPage extends React.Component {
       return false;
     }
     return targetApp.signinItems.some(
-      (item) => item.name === "Verification code",
+      (item) => item.name === "Verification code"
     );
   }
 
@@ -2067,11 +2099,11 @@ class LoginPage extends React.Component {
     const itemsMap = new Map([
       [
         generateItemKey("Password", "All"),
-        { label: i18next.t("general:Password"), key: "password" },
+        {label: i18next.t("general:Password"), key: "password"},
       ],
       [
         generateItemKey("Password", "Non-LDAP"),
-        { label: i18next.t("general:Password"), key: "password" },
+        {label: i18next.t("general:Password"), key: "password"},
       ],
       [
         generateItemKey("Verification code", "All"),
@@ -2096,27 +2128,27 @@ class LoginPage extends React.Component {
       ],
       [
         generateItemKey("WebAuthn", "None"),
-        { label: i18next.t("login:WebAuthn"), key: "webAuthn" },
+        {label: i18next.t("login:WebAuthn"), key: "webAuthn"},
       ],
       [
         generateItemKey("LDAP", "None"),
-        { label: i18next.t("login:LDAP"), key: "ldap" },
+        {label: i18next.t("login:LDAP"), key: "ldap"},
       ],
       [
         generateItemKey("Face ID", "None"),
-        { label: i18next.t("login:Face ID"), key: "faceId" },
+        {label: i18next.t("login:Face ID"), key: "faceId"},
       ],
       [
         generateItemKey("Device login", "Tab"),
-        { label: i18next.t("login:Device login"), key: "device" },
+        {label: i18next.t("login:Device login"), key: "device"},
       ],
       [
         generateItemKey("WeChat", "Tab"),
-        { label: i18next.t("login:WeChat"), key: "wechat" },
+        {label: i18next.t("login:WeChat"), key: "wechat"},
       ],
       [
         generateItemKey("WeChat", "None"),
-        { label: i18next.t("login:WeChat"), key: "wechat" },
+        {label: i18next.t("login:WeChat"), key: "wechat"},
       ],
     ]);
 
@@ -2133,7 +2165,7 @@ class LoginPage extends React.Component {
       }
 
       const item = itemsMap.get(
-        generateItemKey(signinMethod.name, signinMethod.rule),
+        generateItemKey(signinMethod.name, signinMethod.rule)
       );
       if (item) {
         let label =
@@ -2148,7 +2180,7 @@ class LoginPage extends React.Component {
           label = "Code";
         }
 
-        items.push({ label: label, key: item.key });
+        items.push({label: label, key: item.key});
       }
     });
 
@@ -2161,7 +2193,7 @@ class LoginPage extends React.Component {
             size={"small"}
             activeKey={this.state.loginMethod}
             onChange={(key) => {
-              this.setState({ loginMethod: key });
+              this.setState({loginMethod: key});
             }}
             centered
           ></Tabs>
@@ -2192,69 +2224,69 @@ class LoginPage extends React.Component {
   renderOrganizationChoiceBox(orgChoiceMode) {
     const renderChoiceBox = () => {
       switch (orgChoiceMode) {
-        case "None":
-          return null;
-        case "Select":
-          return (
-            <div>
-              <p style={{ fontSize: "large" }}>
-                {i18next.t("login:Please select an organization to sign in")}
-              </p>
-              <OrganizationSelect
-                style={{ width: "70%" }}
-                onSelect={(value) => {
-                  Setting.goToLink(`/login/${value}?orgChoiceMode=None`);
-                }}
-              />
-            </div>
-          );
-        case "Input":
-          return (
-            <div>
-              <p style={{ fontSize: "large" }}>
-                {i18next.t("login:Please type an organization to sign in")}
-              </p>
-              <Form
-                name="basic"
-                onFinish={(values) => {
-                  Setting.goToLink(
-                    `/login/${values.organizationName}?orgChoiceMode=None`,
-                  );
-                }}
+      case "None":
+        return null;
+      case "Select":
+        return (
+          <div>
+            <p style={{fontSize: "large"}}>
+              {i18next.t("login:Please select an organization to sign in")}
+            </p>
+            <OrganizationSelect
+              style={{width: "70%"}}
+              onSelect={(value) => {
+                Setting.goToLink(`/login/${value}?orgChoiceMode=None`);
+              }}
+            />
+          </div>
+        );
+      case "Input":
+        return (
+          <div>
+            <p style={{fontSize: "large"}}>
+              {i18next.t("login:Please type an organization to sign in")}
+            </p>
+            <Form
+              name="basic"
+              onFinish={(values) => {
+                Setting.goToLink(
+                  `/login/${values.organizationName}?orgChoiceMode=None`
+                );
+              }}
+            >
+              <Form.Item
+                name="organizationName"
+                rules={[
+                  {
+                    required: true,
+                    message: i18next.t(
+                      "login:Please input your organization name!"
+                    ),
+                  },
+                ]}
               >
-                <Form.Item
-                  name="organizationName"
-                  rules={[
-                    {
-                      required: true,
-                      message: i18next.t(
-                        "login:Please input your organization name!",
-                      ),
-                    },
-                  ]}
-                >
-                  <Input
-                    style={{ width: "70%" }}
-                    onPressEnter={(e) => {
-                      Setting.goToLink(
-                        `/login/${e.target.value}?orgChoiceMode=None`,
-                      );
-                    }}
-                  />
-                </Form.Item>
-                <Button type="primary" htmlType="submit">
-                  {i18next.t("general:Confirm")}
-                </Button>
-              </Form>
-            </div>
-          );
-        default:
-          return null;
+                <Input
+                  style={{width: "70%"}}
+                  onPressEnter={(e) => {
+                    Setting.goToLink(
+                      `/login/${e.target.value}?orgChoiceMode=None`
+                    );
+                  }}
+                />
+              </Form.Item>
+              <Button type="primary" htmlType="submit">
+                {i18next.t("general:Confirm")}
+              </Button>
+            </Form>
+          </div>
+        );
+      default:
+        return null;
       }
     };
 
     return (
-      <div style={{ height: 300, minWidth: 320 }}>{renderChoiceBox()}</div>
+      <div style={{height: 300, minWidth: 320}}>{renderChoiceBox()}</div>
     );
   }
 
@@ -2289,7 +2321,7 @@ class LoginPage extends React.Component {
     if (this.state.userCodeStatus === "expired") {
       return (
         <Result
-          style={{ width: "100%" }}
+          style={{width: "100%"}}
           status="error"
           title={`Code ${i18next.t("subscription:Expired")}`}
         ></Result>
@@ -2322,10 +2354,10 @@ class LoginPage extends React.Component {
       application.providers === null
         ? []
         : application.providers.filter(
-            (providerItem) =>
-              this.isProviderVisible(providerItem) &&
-              providerItem.provider?.category !== "SAML",
-          );
+          (providerItem) =>
+            this.isProviderVisible(providerItem) &&
+              providerItem.provider?.category !== "SAML"
+        );
     if (
       this.props.preview !== "auto" &&
       !Setting.isPasswordEnabled(application) &&
@@ -2338,44 +2370,44 @@ class LoginPage extends React.Component {
         Provider.getAuthUrl(
           application,
           visibleOAuthProviderItems[0].provider,
-          this.state.mode ?? "signup",
-        ),
+          this.state.mode ?? "signup"
+        )
       );
       return <Loading type="page" tip={i18next.t("login:Signing in...")} />;
     }
 
     const wechatSigninMethods = application.signinMethods?.filter(
-      (method) => method.name === "WeChat" && method.rule === "Login page",
+      (method) => method.name === "WeChat" && method.rule === "Login page"
     );
     const sidePanels = [];
 
     if (wechatSigninMethods?.length > 0) {
       sidePanels.push(
         <div key="wechat-panel">
-          <h3 style={{ textAlign: "center", width: 320 }}>
+          <h3 style={{textAlign: "center", width: 320}}>
             {i18next.t(
-              "provider:Please use WeChat to scan the QR code and follow the official account for sign in",
+              "provider:Please use WeChat to scan the QR code and follow the official account for sign in"
             )}
           </h3>
           <WeChatLoginPanel
             application={application}
             loginMethod={this.state.loginMethod}
           />
-        </div>,
+        </div>
       );
     }
 
     if (
       application.signinMethods?.some(
         (method) =>
-          method.name === "Device login" && method.rule === "Login page",
+          method.name === "Device login" && method.rule === "Login page"
       ) &&
       this.state.type !== "device"
     ) {
       sidePanels.push(
         <div key="device-panel">
           {this.renderDeviceLoginSidePanel(application)}
-        </div>,
+        </div>
       );
     }
 
@@ -2412,7 +2444,7 @@ class LoginPage extends React.Component {
           >
             <div
               className="side-image"
-              style={{ display: application.formOffset !== 4 ? "none" : null }}
+              style={{display: application.formOffset !== 4 ? "none" : null}}
             >
               <Setting.RenderCustomHtml html={application.formSideHtml} />
             </div>

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Button, Input, Space } from "antd";
+import {Button, Input} from "antd";
 import React from "react";
 import i18next from "i18next";
 import * as UserBackend from "../backend/UserBackend";
 import * as AuthBackend from "../auth/AuthBackend";
 import * as Setting from "../Setting";
 // import { SafetyOutlined } from "@ant-design/icons";
-import { CaptchaModal } from "./modal/CaptchaModal";
-
+import {CaptchaModal} from "./modal/CaptchaModal";
+const {Search} = Input;
 export const SendCodeInput = ({
   value,
   disabled,
@@ -68,7 +68,7 @@ export const SendCodeInput = ({
       clintSecret,
       method,
       countryCode,
-      ...onButtonClickArgs,
+      ...onButtonClickArgs
     )
       .then((res) => {
         setButtonLoading(false);
@@ -107,7 +107,7 @@ export const SendCodeInput = ({
       if (!captchaValue?.captchaType || !captchaValue?.captchaToken) {
         Setting.showMessage(
           "error",
-          i18next.t("general:Please complete the captcha correctly"),
+          i18next.t("general:Please complete the captcha correctly")
         );
         return;
       }
@@ -115,7 +115,7 @@ export const SendCodeInput = ({
       handleOk(
         captchaValue.captchaType,
         captchaValue.captchaToken,
-        captchaValue.clientSecret,
+        captchaValue.clientSecret
       );
     };
 
@@ -174,7 +174,7 @@ export const SendCodeInput = ({
         variant="filled"
         enterButton={
           <Button
-            style={{ fontSize: 14 }}
+            style={{fontSize: 14}}
             type={"text"}
             disabled={disabled || buttonLeftTime > 0}
             loading={buttonLoading}

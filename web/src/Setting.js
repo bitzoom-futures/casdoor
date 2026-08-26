@@ -13,28 +13,28 @@
 // limitations under the License.
 
 import React from "react";
-import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { Button, Select, Tag, Tooltip, message, theme } from "antd";
-import { QuestionCircleOutlined } from "@ant-design/icons";
-import { isMobile as isMobileDevice } from "react-device-detect";
+import {useEffect, useRef} from "react";
+import {Link} from "react-router-dom";
+import {Button, Select, Tag, Tooltip, message, theme} from "antd";
+import {QuestionCircleOutlined} from "@ant-design/icons";
+import {isMobile as isMobileDevice} from "react-device-detect";
 import "./i18n";
 import i18next from "i18next";
 import copy from "copy-to-clipboard";
-import { authConfig } from "./auth/Auth";
-import { Helmet } from "react-helmet";
+import {authConfig} from "./auth/Auth";
+import {Helmet} from "react-helmet";
 import * as Conf from "./Conf";
 import * as phoneNumber from "libphonenumber-js";
 import moment from "moment";
 import {
   MfaAuthVerifyForm,
   NextMfa,
-  RequiredMfa,
+  RequiredMfa
 } from "./auth/mfa/MfaAuthVerifyForm";
-import { EmailMfaType, SmsMfaType, TotpMfaType } from "./auth/MfaSetupPage";
+import {EmailMfaType, SmsMfaType, TotpMfaType} from "./auth/MfaSetupPage";
 import * as PasswordChecker from "./common/PasswordChecker";
 
-const { Option } = Select;
+const {Option} = Select;
 
 export let ServerUrl = "";
 
@@ -53,17 +53,17 @@ export function getPasswordPopoverOpen(password, passwordOptions) {
 }
 
 export const Countries = [
-  { label: "English", key: "en", country: "US", alt: "English" },
-  { label: "Español", key: "es", country: "ES", alt: "Español" },
-  { label: "Français", key: "fr", country: "FR", alt: "Français" },
-  { label: "Deutsch", key: "de", country: "DE", alt: "Deutsch" },
-  { label: "日本語", key: "ja", country: "JP", alt: "日本語" },
-  { label: "中文", key: "zh", country: "CN", alt: "中文" },
-  { label: "TiếngViệt", key: "vi", country: "VN", alt: "TiếngViệt" },
-  { label: "Português", key: "pt", country: "PT", alt: "Português" },
-  { label: "Türkçe", key: "tr", country: "TR", alt: "Türkçe" },
-  { label: "Polski", key: "pl", country: "PL", alt: "Polski" },
-  { label: "Українська", key: "uk", country: "UA", alt: "Українська" },
+  {label: "English", key: "en", country: "US", alt: "English"},
+  {label: "Español", key: "es", country: "ES", alt: "Español"},
+  {label: "Français", key: "fr", country: "FR", alt: "Français"},
+  {label: "Deutsch", key: "de", country: "DE", alt: "Deutsch"},
+  {label: "日本語", key: "ja", country: "JP", alt: "日本語"},
+  {label: "中文", key: "zh", country: "CN", alt: "中文"},
+  {label: "TiếngViệt", key: "vi", country: "VN", alt: "TiếngViệt"},
+  {label: "Português", key: "pt", country: "PT", alt: "Português"},
+  {label: "Türkçe", key: "tr", country: "TR", alt: "Türkçe"},
+  {label: "Polski", key: "pl", country: "PL", alt: "Polski"},
+  {label: "Українська", key: "uk", country: "UA", alt: "Українська"},
 ];
 
 export function getThemeData(organization, application) {
@@ -100,8 +100,8 @@ export function getAlgorithmNames(themeData) {
   return algorithms;
 }
 
-export function getLogo(themes) {
-  if (themes.includes("dark")) {
+export function getLogo(themeAlgorithm) {
+  if (isDarkTheme(themeAlgorithm)) {
     return "/img/casdoor-logo_1185x256_dark.png";
   } else {
     return "/img/casdoor-logo_1185x256.png";
@@ -724,69 +724,69 @@ export const PermissionFields = [
 
 export const GetTranslatedUserItems = () => {
   return [
-    { name: "Organization", label: i18next.t("general:Organization") },
-    { name: "ID", label: i18next.t("general:ID") },
-    { name: "Name", label: i18next.t("general:Name") },
-    { name: "Display name", label: i18next.t("general:Display name") },
-    { name: "First name", label: i18next.t("general:First name") },
-    { name: "Last name", label: i18next.t("general:Last name") },
-    { name: "Avatar", label: i18next.t("general:Avatar") },
-    { name: "User type", label: i18next.t("general:User type") },
-    { name: "Password", label: i18next.t("general:Password") },
-    { name: "Email", label: i18next.t("general:Email") },
-    { name: "Phone", label: i18next.t("general:Phone") },
-    { name: "Country code", label: i18next.t("user:Country code") },
-    { name: "Country/Region", label: i18next.t("user:Country/Region") },
-    { name: "Location", label: i18next.t("user:Location") },
-    { name: "Address", label: i18next.t("user:Address") },
-    { name: "Addresses", label: i18next.t("user:Addresses") },
-    { name: "Affiliation", label: i18next.t("user:Affiliation") },
-    { name: "Title", label: i18next.t("general:Title") },
-    { name: "ID card type", label: i18next.t("user:ID card type") },
-    { name: "ID card", label: i18next.t("user:ID card") },
-    { name: "ID card info", label: i18next.t("user:ID card info") },
-    { name: "Real name", label: i18next.t("application:Real name") },
-    { name: "ID verification", label: i18next.t("user:ID verification") },
-    { name: "Homepage", label: i18next.t("user:Homepage") },
-    { name: "Bio", label: i18next.t("user:Bio") },
-    { name: "Tag", label: i18next.t("general:Tag") },
-    { name: "Language", label: i18next.t("user:Language") },
-    { name: "Gender", label: i18next.t("user:Gender") },
-    { name: "Birthday", label: i18next.t("user:Birthday") },
-    { name: "Education", label: i18next.t("user:Education") },
-    { name: "Balance", label: i18next.t("user:Balance") },
+    {name: "Organization", label: i18next.t("general:Organization")},
+    {name: "ID", label: i18next.t("general:ID")},
+    {name: "Name", label: i18next.t("general:Name")},
+    {name: "Display name", label: i18next.t("general:Display name")},
+    {name: "First name", label: i18next.t("general:First name")},
+    {name: "Last name", label: i18next.t("general:Last name")},
+    {name: "Avatar", label: i18next.t("general:Avatar")},
+    {name: "User type", label: i18next.t("general:User type")},
+    {name: "Password", label: i18next.t("general:Password")},
+    {name: "Email", label: i18next.t("general:Email")},
+    {name: "Phone", label: i18next.t("general:Phone")},
+    {name: "Country code", label: i18next.t("user:Country code")},
+    {name: "Country/Region", label: i18next.t("user:Country/Region")},
+    {name: "Location", label: i18next.t("user:Location")},
+    {name: "Address", label: i18next.t("user:Address")},
+    {name: "Addresses", label: i18next.t("user:Addresses")},
+    {name: "Affiliation", label: i18next.t("user:Affiliation")},
+    {name: "Title", label: i18next.t("general:Title")},
+    {name: "ID card type", label: i18next.t("user:ID card type")},
+    {name: "ID card", label: i18next.t("user:ID card")},
+    {name: "ID card info", label: i18next.t("user:ID card info")},
+    {name: "Real name", label: i18next.t("application:Real name")},
+    {name: "ID verification", label: i18next.t("user:ID verification")},
+    {name: "Homepage", label: i18next.t("user:Homepage")},
+    {name: "Bio", label: i18next.t("user:Bio")},
+    {name: "Tag", label: i18next.t("general:Tag")},
+    {name: "Language", label: i18next.t("user:Language")},
+    {name: "Gender", label: i18next.t("user:Gender")},
+    {name: "Birthday", label: i18next.t("user:Birthday")},
+    {name: "Education", label: i18next.t("user:Education")},
+    {name: "Balance", label: i18next.t("user:Balance")},
     {
       name: "Balance currency",
       label: i18next.t("organization:Balance currency"),
     },
-    { name: "Balance credit", label: i18next.t("organization:Balance credit") },
-    { name: "Cart", label: i18next.t("general:Cart") },
-    { name: "Transactions", label: i18next.t("general:Transactions") },
-    { name: "UID number", label: i18next.t("general:UID number") },
-    { name: "Score", label: i18next.t("user:Score") },
-    { name: "Karma", label: i18next.t("user:Karma") },
-    { name: "Ranking", label: i18next.t("user:Ranking") },
+    {name: "Balance credit", label: i18next.t("organization:Balance credit")},
+    {name: "Cart", label: i18next.t("general:Cart")},
+    {name: "Transactions", label: i18next.t("general:Transactions")},
+    {name: "UID number", label: i18next.t("general:UID number")},
+    {name: "Score", label: i18next.t("user:Score")},
+    {name: "Karma", label: i18next.t("user:Karma")},
+    {name: "Ranking", label: i18next.t("user:Ranking")},
     {
       name: "Signup application",
       label: i18next.t("general:Signup application"),
     },
-    { name: "Register type", label: i18next.t("user:Register type") },
-    { name: "Register source", label: i18next.t("user:Register source") },
-    { name: "API key", label: i18next.t("general:API key") },
-    { name: "Groups", label: i18next.t("general:Groups") },
-    { name: "Roles", label: i18next.t("general:Roles") },
-    { name: "Permissions", label: i18next.t("general:Permissions") },
-    { name: "3rd-party logins", label: i18next.t("user:3rd-party logins") },
-    { name: "Properties", label: i18next.t("user:Properties") },
-    { name: "Is online", label: i18next.t("user:Is online") },
-    { name: "Is admin", label: i18next.t("user:Is admin") },
-    { name: "Is forbidden", label: i18next.t("user:Is forbidden") },
-    { name: "Is deleted", label: i18next.t("user:Is deleted") },
+    {name: "Register type", label: i18next.t("user:Register type")},
+    {name: "Register source", label: i18next.t("user:Register source")},
+    {name: "API key", label: i18next.t("general:API key")},
+    {name: "Groups", label: i18next.t("general:Groups")},
+    {name: "Roles", label: i18next.t("general:Roles")},
+    {name: "Permissions", label: i18next.t("general:Permissions")},
+    {name: "3rd-party logins", label: i18next.t("user:3rd-party logins")},
+    {name: "Properties", label: i18next.t("user:Properties")},
+    {name: "Is online", label: i18next.t("user:Is online")},
+    {name: "Is admin", label: i18next.t("user:Is admin")},
+    {name: "Is forbidden", label: i18next.t("user:Is forbidden")},
+    {name: "Is deleted", label: i18next.t("user:Is deleted")},
     {
       name: "Need update password",
       label: i18next.t("user:Need update password"),
     },
-    { name: "IP whitelist", label: i18next.t("general:IP whitelist") },
+    {name: "IP whitelist", label: i18next.t("general:IP whitelist")},
     {
       name: "Multi-factor authentication",
       label: i18next.t("mfa:Multi-factor authentication"),
@@ -799,10 +799,10 @@ export const GetTranslatedUserItems = () => {
       name: "Last change password time",
       label: i18next.t("user:Last change password time"),
     },
-    { name: "Managed accounts", label: i18next.t("user:Managed accounts") },
-    { name: "Face ID", label: i18next.t("login:Face ID") },
-    { name: "MFA accounts", label: i18next.t("user:MFA accounts") },
-    { name: "MFA items", label: i18next.t("general:MFA items") },
+    {name: "Managed accounts", label: i18next.t("user:Managed accounts")},
+    {name: "Face ID", label: i18next.t("login:Face ID")},
+    {name: "MFA accounts", label: i18next.t("user:MFA accounts")},
+    {name: "MFA items", label: i18next.t("general:MFA items")},
   ];
 };
 
@@ -837,11 +837,11 @@ export function getUserColumns() {
     const transFieldItem = items.find((item) => item.name === transField);
     if (transFieldItem === undefined) {
       const toTranslateList = ["general", "user", "organization"].map(
-        (ns) => `${ns}:${transField}`,
+        (ns) => `${ns}:${transField}`
       );
       const transResult = toTranslateList
         .map((item) =>
-          i18next.t(item) === transField ? null : i18next.t(item),
+          i18next.t(item) === transField ? null : i18next.t(item)
         )
         .find((item) => item !== null);
       transField = transResult ? transResult : transField;
@@ -859,7 +859,7 @@ export function getGroupColumns() {
       transField = "Organization";
     }
     const toTranslateList = ["general", "group"].map(
-      (ns) => `${ns}:${transField}`,
+      (ns) => `${ns}:${transField}`
     );
     const transResult = toTranslateList
       .map((item) => (i18next.t(item) === transField ? null : i18next.t(item)))
@@ -878,7 +878,7 @@ export function getRoleColumns() {
       transField = "Organization";
     }
     const toTranslateList = ["general", "role"].map(
-      (ns) => `${ns}:${transField}`,
+      (ns) => `${ns}:${transField}`
     );
     const transResult = toTranslateList
       .map((item) => (i18next.t(item) === transField ? null : i18next.t(item)))
@@ -897,7 +897,7 @@ export function getPermissionColumns() {
       transField = "Organization";
     }
     const toTranslateList = ["general", "permission"].map(
-      (ns) => `${ns}:${transField}`,
+      (ns) => `${ns}:${transField}`
     );
     const transResult = toTranslateList
       .map((item) => (i18next.t(item) === transField ? null : i18next.t(item)))
@@ -910,7 +910,7 @@ export function getPermissionColumns() {
 export function initCountries() {
   const countries = require("i18n-iso-countries");
   countries.registerLocale(
-    require("i18n-iso-countries/langs/" + getLanguage() + ".json"),
+    require("i18n-iso-countries/langs/" + getLanguage() + ".json")
   );
   return countries;
 }
@@ -972,7 +972,7 @@ export function getCountryImage(country) {
       src={`${StaticBaseUrl}/flag-icons/${country.code}.svg`}
       alt={country.name}
       height={20}
-      style={{ marginRight: 10 }}
+      style={{marginRight: 10}}
     />
   );
 }
@@ -1052,19 +1052,19 @@ export function isSignupItemPrompted(signupItem) {
 
 export function getAllPromptedProviderItems(application) {
   return application.providers?.filter((providerItem) =>
-    isProviderPrompted(providerItem),
+    isProviderPrompted(providerItem)
   );
 }
 
 export function getAllPromptedSignupItems(application) {
   return application.signupItems?.filter((signupItem) =>
-    isSignupItemPrompted(signupItem),
+    isSignupItemPrompted(signupItem)
   );
 }
 
 export function getSignupItem(application, itemName) {
   const signupItems = application.signupItems?.filter(
-    (signupItem) => signupItem.name === itemName,
+    (signupItem) => signupItem.name === itemName
   );
   if (signupItems?.length > 0) {
     return signupItems[0];
@@ -1254,8 +1254,8 @@ export function getMfaItemsByRules(user, organization, mfaRules = []) {
     .filter((mfaItem) => mfaRules.includes(mfaItem.rule))
     .filter((mfaItem) =>
       user.multiFactorAuths.some(
-        (mfa) => mfa.mfaType === mfaItem.name && !mfa.enabled,
-      ),
+        (mfa) => mfa.mfaType === mfaItem.name && !mfa.enabled
+      )
     );
 }
 
@@ -1564,7 +1564,7 @@ export function getClickable(text) {
         copy(text);
         showMessage(
           "success",
-          i18next.t("general:Copied to clipboard successfully"),
+          i18next.t("general:Copied to clipboard successfully")
         );
       }}
     >
@@ -1599,223 +1599,223 @@ export function getProviderLogo(provider) {
 export function getProviderTypeOptions(category) {
   if (category === "OAuth") {
     return [
-      { id: "Google", name: "Google" },
-      { id: "GitHub", name: "GitHub" },
-      { id: "QQ", name: "QQ" },
-      { id: "WeChat", name: "WeChat" },
-      { id: "WeChatMiniProgram", name: "WeChat Mini Program" },
-      { id: "Facebook", name: "Facebook" },
-      { id: "DingTalk", name: "DingTalk" },
-      { id: "Weibo", name: "Weibo" },
-      { id: "Gitee", name: "Gitee" },
-      { id: "LinkedIn", name: "LinkedIn" },
-      { id: "WeCom", name: "WeCom" },
-      { id: "Lark", name: "Lark" },
-      { id: "GitLab", name: "GitLab" },
-      { id: "ADFS", name: "ADFS" },
-      { id: "Baidu", name: "Baidu" },
-      { id: "Alipay", name: "Alipay" },
-      { id: "Casdoor", name: "Casdoor" },
-      { id: "Infoflow", name: "Infoflow" },
-      { id: "Apple", name: "Apple" },
-      { id: "AzureAD", name: "Azure AD" },
-      { id: "AzureADB2C", name: "Azure AD B2C" },
-      { id: "Slack", name: "Slack" },
-      { id: "Steam", name: "Steam" },
-      { id: "Bilibili", name: "Bilibili" },
-      { id: "Okta", name: "Okta" },
-      { id: "Douyin", name: "Douyin" },
-      { id: "Kwai", name: "Kwai" },
-      { id: "Line", name: "Line" },
-      { id: "Amazon", name: "Amazon" },
-      { id: "Auth0", name: "Auth0" },
-      { id: "BattleNet", name: "Battle.net" },
-      { id: "Bitbucket", name: "Bitbucket" },
-      { id: "Box", name: "Box" },
-      { id: "CloudFoundry", name: "Cloud Foundry" },
-      { id: "Dailymotion", name: "Dailymotion" },
-      { id: "Deezer", name: "Deezer" },
-      { id: "DigitalOcean", name: "DigitalOcean" },
-      { id: "Discord", name: "Discord" },
-      { id: "Dropbox", name: "Dropbox" },
-      { id: "EveOnline", name: "Eve Online" },
-      { id: "Fitbit", name: "Fitbit" },
-      { id: "Gitea", name: "Gitea" },
-      { id: "Heroku", name: "Heroku" },
-      { id: "InfluxCloud", name: "InfluxCloud" },
-      { id: "Instagram", name: "Instagram" },
-      { id: "Intercom", name: "Intercom" },
-      { id: "Kakao", name: "Kakao" },
-      { id: "Lastfm", name: "Lastfm" },
-      { id: "Mailru", name: "Mailru" },
-      { id: "Meetup", name: "Meetup" },
-      { id: "MicrosoftOnline", name: "MicrosoftOnline" },
-      { id: "Naver", name: "Naver" },
-      { id: "Nextcloud", name: "Nextcloud" },
-      { id: "OneDrive", name: "OneDrive" },
-      { id: "Oura", name: "Oura" },
-      { id: "Patreon", name: "Patreon" },
-      { id: "PayPal", name: "PayPal" },
-      { id: "SalesForce", name: "SalesForce" },
-      { id: "Shopify", name: "Shopify" },
-      { id: "Soundcloud", name: "Soundcloud" },
-      { id: "Spotify", name: "Spotify" },
-      { id: "Strava", name: "Strava" },
-      { id: "Stripe", name: "Stripe" },
-      { id: "Telegram", name: "Telegram" },
-      { id: "TikTok", name: "TikTok" },
-      { id: "Tumblr", name: "Tumblr" },
-      { id: "Twitch", name: "Twitch" },
-      { id: "Twitter", name: "Twitter" },
-      { id: "Typetalk", name: "Typetalk" },
-      { id: "Uber", name: "Uber" },
-      { id: "VK", name: "VK" },
-      { id: "Wepay", name: "Wepay" },
-      { id: "Xero", name: "Xero" },
-      { id: "Yahoo", name: "Yahoo" },
-      { id: "Yammer", name: "Yammer" },
-      { id: "Yandex", name: "Yandex" },
-      { id: "Zoom", name: "Zoom" },
-      { id: "Custom", name: "Custom" },
-      { id: "Custom2", name: "Custom2" },
-      { id: "Custom3", name: "Custom3" },
-      { id: "Custom4", name: "Custom4" },
-      { id: "Custom5", name: "Custom5" },
-      { id: "Custom6", name: "Custom6" },
-      { id: "Custom7", name: "Custom7" },
-      { id: "Custom8", name: "Custom8" },
-      { id: "Custom9", name: "Custom9" },
-      { id: "Custom10", name: "Custom10" },
-      { id: "Custom Flexible", name: "Custom Flexible" },
+      {id: "Google", name: "Google"},
+      {id: "GitHub", name: "GitHub"},
+      {id: "QQ", name: "QQ"},
+      {id: "WeChat", name: "WeChat"},
+      {id: "WeChatMiniProgram", name: "WeChat Mini Program"},
+      {id: "Facebook", name: "Facebook"},
+      {id: "DingTalk", name: "DingTalk"},
+      {id: "Weibo", name: "Weibo"},
+      {id: "Gitee", name: "Gitee"},
+      {id: "LinkedIn", name: "LinkedIn"},
+      {id: "WeCom", name: "WeCom"},
+      {id: "Lark", name: "Lark"},
+      {id: "GitLab", name: "GitLab"},
+      {id: "ADFS", name: "ADFS"},
+      {id: "Baidu", name: "Baidu"},
+      {id: "Alipay", name: "Alipay"},
+      {id: "Casdoor", name: "Casdoor"},
+      {id: "Infoflow", name: "Infoflow"},
+      {id: "Apple", name: "Apple"},
+      {id: "AzureAD", name: "Azure AD"},
+      {id: "AzureADB2C", name: "Azure AD B2C"},
+      {id: "Slack", name: "Slack"},
+      {id: "Steam", name: "Steam"},
+      {id: "Bilibili", name: "Bilibili"},
+      {id: "Okta", name: "Okta"},
+      {id: "Douyin", name: "Douyin"},
+      {id: "Kwai", name: "Kwai"},
+      {id: "Line", name: "Line"},
+      {id: "Amazon", name: "Amazon"},
+      {id: "Auth0", name: "Auth0"},
+      {id: "BattleNet", name: "Battle.net"},
+      {id: "Bitbucket", name: "Bitbucket"},
+      {id: "Box", name: "Box"},
+      {id: "CloudFoundry", name: "Cloud Foundry"},
+      {id: "Dailymotion", name: "Dailymotion"},
+      {id: "Deezer", name: "Deezer"},
+      {id: "DigitalOcean", name: "DigitalOcean"},
+      {id: "Discord", name: "Discord"},
+      {id: "Dropbox", name: "Dropbox"},
+      {id: "EveOnline", name: "Eve Online"},
+      {id: "Fitbit", name: "Fitbit"},
+      {id: "Gitea", name: "Gitea"},
+      {id: "Heroku", name: "Heroku"},
+      {id: "InfluxCloud", name: "InfluxCloud"},
+      {id: "Instagram", name: "Instagram"},
+      {id: "Intercom", name: "Intercom"},
+      {id: "Kakao", name: "Kakao"},
+      {id: "Lastfm", name: "Lastfm"},
+      {id: "Mailru", name: "Mailru"},
+      {id: "Meetup", name: "Meetup"},
+      {id: "MicrosoftOnline", name: "MicrosoftOnline"},
+      {id: "Naver", name: "Naver"},
+      {id: "Nextcloud", name: "Nextcloud"},
+      {id: "OneDrive", name: "OneDrive"},
+      {id: "Oura", name: "Oura"},
+      {id: "Patreon", name: "Patreon"},
+      {id: "PayPal", name: "PayPal"},
+      {id: "SalesForce", name: "SalesForce"},
+      {id: "Shopify", name: "Shopify"},
+      {id: "Soundcloud", name: "Soundcloud"},
+      {id: "Spotify", name: "Spotify"},
+      {id: "Strava", name: "Strava"},
+      {id: "Stripe", name: "Stripe"},
+      {id: "Telegram", name: "Telegram"},
+      {id: "TikTok", name: "TikTok"},
+      {id: "Tumblr", name: "Tumblr"},
+      {id: "Twitch", name: "Twitch"},
+      {id: "Twitter", name: "Twitter"},
+      {id: "Typetalk", name: "Typetalk"},
+      {id: "Uber", name: "Uber"},
+      {id: "VK", name: "VK"},
+      {id: "Wepay", name: "Wepay"},
+      {id: "Xero", name: "Xero"},
+      {id: "Yahoo", name: "Yahoo"},
+      {id: "Yammer", name: "Yammer"},
+      {id: "Yandex", name: "Yandex"},
+      {id: "Zoom", name: "Zoom"},
+      {id: "Custom", name: "Custom"},
+      {id: "Custom2", name: "Custom2"},
+      {id: "Custom3", name: "Custom3"},
+      {id: "Custom4", name: "Custom4"},
+      {id: "Custom5", name: "Custom5"},
+      {id: "Custom6", name: "Custom6"},
+      {id: "Custom7", name: "Custom7"},
+      {id: "Custom8", name: "Custom8"},
+      {id: "Custom9", name: "Custom9"},
+      {id: "Custom10", name: "Custom10"},
+      {id: "Custom Flexible", name: "Custom Flexible"},
     ];
   } else if (category === "Email") {
     return [
-      { id: "Default", name: "Default" },
-      { id: "SUBMAIL", name: "SUBMAIL" },
-      { id: "Mailtrap", name: "Mailtrap" },
-      { id: "Azure ACS", name: "Azure ACS" },
-      { id: "SendGrid", name: "SendGrid" },
-      { id: "Custom HTTP Email", name: "Custom HTTP Email" },
-      { id: "Resend", name: "Resend" },
+      {id: "Default", name: "Default"},
+      {id: "SUBMAIL", name: "SUBMAIL"},
+      {id: "Mailtrap", name: "Mailtrap"},
+      {id: "Azure ACS", name: "Azure ACS"},
+      {id: "SendGrid", name: "SendGrid"},
+      {id: "Custom HTTP Email", name: "Custom HTTP Email"},
+      {id: "Resend", name: "Resend"},
     ];
   } else if (category === "SMS") {
     return [
-      { id: "Aliyun SMS", name: "Alibaba Cloud SMS" },
-      { id: "Alibaba Cloud PNVS SMS", name: "Alibaba Cloud PNVS SMS" },
-      { id: "Amazon SNS", name: "Amazon SNS" },
-      { id: "Azure ACS", name: "Azure ACS" },
-      { id: "Custom HTTP SMS", name: "Custom HTTP SMS" },
-      { id: "Mock SMS", name: "Mock SMS" },
-      { id: "OSON SMS", name: "OSON SMS" },
-      { id: "Infobip SMS", name: "Infobip SMS" },
-      { id: "Tencent Cloud SMS", name: "Tencent Cloud SMS" },
-      { id: "Baidu Cloud SMS", name: "Baidu Cloud SMS" },
-      { id: "Volc Engine SMS", name: "Volc Engine SMS" },
-      { id: "Huawei Cloud SMS", name: "Huawei Cloud SMS" },
-      { id: "UCloud SMS", name: "UCloud SMS" },
-      { id: "Twilio SMS", name: "Twilio SMS" },
-      { id: "SmsBao SMS", name: "SmsBao SMS" },
-      { id: "SUBMAIL SMS", name: "SUBMAIL SMS" },
-      { id: "Msg91 SMS", name: "Msg91 SMS" },
+      {id: "Aliyun SMS", name: "Alibaba Cloud SMS"},
+      {id: "Alibaba Cloud PNVS SMS", name: "Alibaba Cloud PNVS SMS"},
+      {id: "Amazon SNS", name: "Amazon SNS"},
+      {id: "Azure ACS", name: "Azure ACS"},
+      {id: "Custom HTTP SMS", name: "Custom HTTP SMS"},
+      {id: "Mock SMS", name: "Mock SMS"},
+      {id: "OSON SMS", name: "OSON SMS"},
+      {id: "Infobip SMS", name: "Infobip SMS"},
+      {id: "Tencent Cloud SMS", name: "Tencent Cloud SMS"},
+      {id: "Baidu Cloud SMS", name: "Baidu Cloud SMS"},
+      {id: "Volc Engine SMS", name: "Volc Engine SMS"},
+      {id: "Huawei Cloud SMS", name: "Huawei Cloud SMS"},
+      {id: "UCloud SMS", name: "UCloud SMS"},
+      {id: "Twilio SMS", name: "Twilio SMS"},
+      {id: "SmsBao SMS", name: "SmsBao SMS"},
+      {id: "SUBMAIL SMS", name: "SUBMAIL SMS"},
+      {id: "Msg91 SMS", name: "Msg91 SMS"},
     ];
   } else if (category === "Storage") {
     return [
-      { id: "Local File System", name: "Local File System" },
-      { id: "AWS S3", name: "AWS S3" },
-      { id: "MinIO", name: "MinIO" },
-      { id: "Aliyun OSS", name: "Alibaba Cloud OSS" },
-      { id: "Tencent Cloud COS", name: "Tencent Cloud COS" },
-      { id: "Azure Blob", name: "Azure Blob" },
-      { id: "Qiniu Cloud Kodo", name: "Qiniu Cloud Kodo" },
-      { id: "Google Cloud Storage", name: "Google Cloud Storage" },
-      { id: "Synology", name: "Synology" },
-      { id: "Casdoor", name: "Casdoor" },
-      { id: "CUCloud OSS", name: "CUCloud OSS" },
+      {id: "Local File System", name: "Local File System"},
+      {id: "AWS S3", name: "AWS S3"},
+      {id: "MinIO", name: "MinIO"},
+      {id: "Aliyun OSS", name: "Alibaba Cloud OSS"},
+      {id: "Tencent Cloud COS", name: "Tencent Cloud COS"},
+      {id: "Azure Blob", name: "Azure Blob"},
+      {id: "Qiniu Cloud Kodo", name: "Qiniu Cloud Kodo"},
+      {id: "Google Cloud Storage", name: "Google Cloud Storage"},
+      {id: "Synology", name: "Synology"},
+      {id: "Casdoor", name: "Casdoor"},
+      {id: "CUCloud OSS", name: "CUCloud OSS"},
     ];
   } else if (category === "SAML") {
     return [
-      { id: "Aliyun IDaaS", name: "Aliyun IDaaS" },
-      { id: "Keycloak", name: "Keycloak" },
-      { id: "Custom", name: "Custom" },
-      { id: "Custom Flexible", name: "Custom Flexible" },
+      {id: "Aliyun IDaaS", name: "Aliyun IDaaS"},
+      {id: "Keycloak", name: "Keycloak"},
+      {id: "Custom", name: "Custom"},
+      {id: "Custom Flexible", name: "Custom Flexible"},
     ];
   } else if (category === "Payment") {
     return [
-      { id: "Dummy", name: "Dummy" },
-      { id: "Balance", name: "Balance" },
-      { id: "Alipay", name: "Alipay" },
-      { id: "WeChat Pay", name: "WeChat Pay" },
-      { id: "PayPal", name: "PayPal" },
-      { id: "Stripe", name: "Stripe" },
-      { id: "AirWallex", name: "AirWallex" },
-      { id: "GC", name: "GC" },
-      { id: "Polar", name: "Polar" },
-      { id: "Paddle", name: "Paddle" },
-      { id: "FastSpring", name: "FastSpring" },
-      { id: "Lemon Squeezy", name: "Lemon Squeezy" },
-      { id: "Adyen", name: "Adyen" },
+      {id: "Dummy", name: "Dummy"},
+      {id: "Balance", name: "Balance"},
+      {id: "Alipay", name: "Alipay"},
+      {id: "WeChat Pay", name: "WeChat Pay"},
+      {id: "PayPal", name: "PayPal"},
+      {id: "Stripe", name: "Stripe"},
+      {id: "AirWallex", name: "AirWallex"},
+      {id: "GC", name: "GC"},
+      {id: "Polar", name: "Polar"},
+      {id: "Paddle", name: "Paddle"},
+      {id: "FastSpring", name: "FastSpring"},
+      {id: "Lemon Squeezy", name: "Lemon Squeezy"},
+      {id: "Adyen", name: "Adyen"},
     ];
   } else if (category === "Captcha") {
     return [
-      { id: "Default", name: "Default" },
-      { id: "reCAPTCHA v2", name: "reCAPTCHA v2" },
-      { id: "reCAPTCHA v3", name: "reCAPTCHA v3" },
-      { id: "hCaptcha", name: "hCaptcha" },
-      { id: "Aliyun Captcha", name: "Aliyun Captcha" },
-      { id: "GEETEST", name: "GEETEST" },
-      { id: "Cloudflare Turnstile", name: "Cloudflare Turnstile" },
+      {id: "Default", name: "Default"},
+      {id: "reCAPTCHA v2", name: "reCAPTCHA v2"},
+      {id: "reCAPTCHA v3", name: "reCAPTCHA v3"},
+      {id: "hCaptcha", name: "hCaptcha"},
+      {id: "Aliyun Captcha", name: "Aliyun Captcha"},
+      {id: "GEETEST", name: "GEETEST"},
+      {id: "Cloudflare Turnstile", name: "Cloudflare Turnstile"},
     ];
   } else if (category === "Web3") {
     return [
-      { id: "MetaMask", name: "MetaMask" },
-      { id: "Web3Onboard", name: "Web3-Onboard" },
+      {id: "MetaMask", name: "MetaMask"},
+      {id: "Web3Onboard", name: "Web3-Onboard"},
     ];
   } else if (category === "Notification") {
     return [
-      { id: "Telegram", name: "Telegram" },
-      { id: "Custom HTTP", name: "Custom HTTP" },
-      { id: "DingTalk", name: "DingTalk" },
-      { id: "Lark", name: "Lark" },
-      { id: "Microsoft Teams", name: "Microsoft Teams" },
-      { id: "Bark", name: "Bark" },
-      { id: "Pushover", name: "Pushover" },
-      { id: "Pushbullet", name: "Pushbullet" },
-      { id: "Slack", name: "Slack" },
-      { id: "Webpush", name: "Webpush" },
-      { id: "Discord", name: "Discord" },
-      { id: "Google Chat", name: "Google Chat" },
-      { id: "Line", name: "Line" },
-      { id: "Matrix", name: "Matrix" },
-      { id: "Twitter", name: "Twitter" },
-      { id: "Reddit", name: "Reddit" },
-      { id: "Rocket Chat", name: "Rocket Chat" },
-      { id: "Viber", name: "Viber" },
-      { id: "CUCloud", name: "CUCloud" },
-      { id: "WeCom", name: "WeCom" },
+      {id: "Telegram", name: "Telegram"},
+      {id: "Custom HTTP", name: "Custom HTTP"},
+      {id: "DingTalk", name: "DingTalk"},
+      {id: "Lark", name: "Lark"},
+      {id: "Microsoft Teams", name: "Microsoft Teams"},
+      {id: "Bark", name: "Bark"},
+      {id: "Pushover", name: "Pushover"},
+      {id: "Pushbullet", name: "Pushbullet"},
+      {id: "Slack", name: "Slack"},
+      {id: "Webpush", name: "Webpush"},
+      {id: "Discord", name: "Discord"},
+      {id: "Google Chat", name: "Google Chat"},
+      {id: "Line", name: "Line"},
+      {id: "Matrix", name: "Matrix"},
+      {id: "Twitter", name: "Twitter"},
+      {id: "Reddit", name: "Reddit"},
+      {id: "Rocket Chat", name: "Rocket Chat"},
+      {id: "Viber", name: "Viber"},
+      {id: "CUCloud", name: "CUCloud"},
+      {id: "WeCom", name: "WeCom"},
     ];
   } else if (category === "Face ID") {
     return [
-      { id: "Alibaba Cloud Facebody", name: "Alibaba Cloud Facebody" },
-      { id: "Local UniFace", name: "Local UniFace" },
+      {id: "Alibaba Cloud Facebody", name: "Alibaba Cloud Facebody"},
+      {id: "Local UniFace", name: "Local UniFace"},
     ];
   } else if (category === "MFA") {
-    return [{ id: "RADIUS", name: "RADIUS" }];
+    return [{id: "RADIUS", name: "RADIUS"}];
   } else if (category === "ID Verification") {
     return [
-      { id: "Jumio", name: "Jumio" },
-      { id: "Alibaba Cloud", name: "Alibaba Cloud" },
+      {id: "Jumio", name: "Jumio"},
+      {id: "Alibaba Cloud", name: "Alibaba Cloud"},
     ];
   } else if (category === "Log") {
     return [
-      { id: "Casdoor Permission Log", name: "Casdoor Permission Log" },
-      { id: "System Log", name: "System Log" },
-      { id: "Agent", name: "Agent" },
-      { id: "SELinux Log", name: "SELinux Log" },
+      {id: "Casdoor Permission Log", name: "Casdoor Permission Log"},
+      {id: "System Log", name: "System Log"},
+      {id: "Agent", name: "Agent"},
+      {id: "SELinux Log", name: "SELinux Log"},
     ];
   } else if (category === "Scan") {
     return [
-      { id: "Security Scan", name: "Security Scan" },
-      { id: "MCP Scan", name: "MCP Scan" },
+      {id: "Security Scan", name: "Security Scan"},
+      {id: "MCP Scan", name: "MCP Scan"},
     ];
   } else {
     return [];
@@ -1827,9 +1827,9 @@ export function getCryptoAlgorithmOptions(cryptoAlgorithm) {
     return [];
   } else {
     return [
-      { id: 1024, name: "1024" },
-      { id: 2048, name: "2048" },
-      { id: 4096, name: "4096" },
+      {id: 1024, name: "1024"},
+      {id: 2048, name: "2048"},
+      {id: 4096, name: "4096"},
     ];
   }
 }
@@ -1866,7 +1866,7 @@ function isSigninMethodEnabled(application, signinMethod) {
   if (application && application.signinMethods) {
     return (
       application.signinMethods.filter(
-        (item) => item.name === signinMethod && item.rule !== "Hide password",
+        (item) => item.name === signinMethod && item.rule !== "Hide password"
       ).length > 0
     );
   } else {
@@ -1888,7 +1888,7 @@ export function getCaptchaProviderItems(application) {
   }
 
   return providers.filter(
-    (providerItem) => providerItem?.provider?.category === "Captcha",
+    (providerItem) => providerItem?.provider?.category === "Captcha"
   );
 }
 
@@ -1896,19 +1896,19 @@ export function getCaptchaRule(application) {
   const captchaProviderItems = getCaptchaProviderItems(application);
   if (
     captchaProviderItems.some(
-      (providerItem) => providerItem.rule === CaptchaRule.Always,
+      (providerItem) => providerItem.rule === CaptchaRule.Always
     )
   ) {
     return CaptchaRule.Always;
   } else if (
     captchaProviderItems.some(
-      (providerItem) => providerItem.rule === CaptchaRule.Dynamic,
+      (providerItem) => providerItem.rule === CaptchaRule.Dynamic
     )
   ) {
     return CaptchaRule.Dynamic;
   } else if (
     captchaProviderItems.some(
-      (providerItem) => providerItem.rule === CaptchaRule.InternetOnly,
+      (providerItem) => providerItem.rule === CaptchaRule.InternetOnly
     )
   ) {
     return CaptchaRule.InternetOnly;
@@ -1921,7 +1921,7 @@ export function isInlineCaptchaEnabled(application) {
   return (
     application?.signinItems?.some(
       (signinItem) =>
-        signinItem.name === "Captcha" && signinItem.rule === "inline",
+        signinItem.name === "Captcha" && signinItem.rule === "inline"
     ) || false
   );
 }
@@ -1957,7 +1957,7 @@ export function getLoginLink(application) {
   } else if (window.location.pathname.includes("/signup/oauth/authorize")) {
     url = window.location.pathname.replace(
       "/signup/oauth/authorize",
-      "/login/oauth/authorize",
+      "/login/oauth/authorize"
     );
   } else if (authConfig.appName === application.name) {
     url = "/login";
@@ -1986,7 +1986,7 @@ function renderLink(url, text, onClick, style) {
   if (url.startsWith("/")) {
     return (
       <Link
-        style={{ float: "right", ...style }}
+        style={{float: "right", ...style}}
         to={url}
         onClick={() => {
           if (onClick !== null) {
@@ -2000,7 +2000,7 @@ function renderLink(url, text, onClick, style) {
   } else if (url.startsWith("http")) {
     return (
       <a
-        style={{ float: "right", ...style }}
+        style={{float: "right", ...style}}
         href={url}
         onClick={() => {
           if (onClick !== null) {
@@ -2023,7 +2023,7 @@ export function renderSignupLink(application, text) {
   } else if (window.location.pathname.includes("/login/oauth/authorize")) {
     url = window.location.pathname.replace(
       "/login/oauth/authorize",
-      "/signup/oauth/authorize",
+      "/signup/oauth/authorize"
     );
   } else if (authConfig.appName === application.name) {
     url = "/signup";
@@ -2041,7 +2041,7 @@ export function renderSignupLink(application, text) {
   const storeSigninUrl = () => {
     sessionStorage.setItem(
       "signinUrl",
-      window.location.pathname + window.location.search,
+      window.location.pathname + window.location.search
     );
   };
 
@@ -2065,14 +2065,14 @@ export function renderForgetLink(application, text, style) {
   const storeSigninUrl = () => {
     sessionStorage.setItem(
       "signinUrl",
-      window.location.pathname + window.location.search,
+      window.location.pathname + window.location.search
     );
   };
 
   return renderLink(url, text, storeSigninUrl, style);
 }
 
-export function RenderCustomHtml({ html }) {
+export function RenderCustomHtml({html}) {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -2086,14 +2086,14 @@ export function RenderCustomHtml({ html }) {
     oldScripts.forEach((oldScript) => {
       const newScript = document.createElement("script");
       Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value),
+        newScript.setAttribute(attr.name, attr.value)
       );
       newScript.textContent = oldScript.textContent;
       oldScript.parentNode.replaceChild(newScript, oldScript);
     });
   }, [html]);
 
-  return <div ref={containerRef} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div ref={containerRef} dangerouslySetInnerHTML={{__html: html}} />;
 }
 
 export function renderHelmet(application) {
@@ -2122,16 +2122,16 @@ export function renderHelmet(application) {
 export function getLabel(text, tooltip) {
   return (
     <React.Fragment>
-      <span style={{ marginRight: 4 }}>{text}</span>
+      <span style={{marginRight: 4}}>{text}</span>
       <Tooltip placement="top" title={tooltip}>
-        <QuestionCircleOutlined style={{ color: "var(--ant-color-primary)" }} />
+        <QuestionCircleOutlined style={{color: "var(--ant-color-primary)"}} />
       </Tooltip>
     </React.Fragment>
   );
 }
 
 export function getItem(label, key, icon, children, type) {
-  return { label: label, key: key, icon: icon, children: children, type: type };
+  return {label: label, key: key, icon: icon, children: children, type: type};
 }
 
 export function getOption(label, value) {
@@ -2155,7 +2155,7 @@ export function getArrayItem(array, key, value) {
 
 export function getDeduplicatedArray(array, filterArray, key) {
   const res = array.filter(
-    (item) => !filterArray.some((tableItem) => tableItem[key] === item[key]),
+    (item) => !filterArray.some((tableItem) => tableItem[key] === item[key])
   );
   return res;
 }
@@ -2186,7 +2186,7 @@ export function getTags(tags, urlPrefix = null) {
       res.push(
         <Link to={`/${urlPrefix}/${tag}`}>
           <Tag color={getTagColor(tag)}>{tag}</Tag>
-        </Link>,
+        </Link>
       );
     }
   });
@@ -2238,7 +2238,7 @@ export function scrollToDiv(divId) {
   if (divId) {
     const ele = document.getElementById(divId);
     if (ele) {
-      ele.scrollIntoView({ behavior: "smooth" });
+      ele.scrollIntoView({behavior: "smooth"});
     }
   }
 }
@@ -2292,32 +2292,32 @@ export function builtInObject(obj) {
 }
 
 export const CurrencyOptions = [
-  { id: "USD", name: "USD" },
-  { id: "CNY", name: "CNY" },
-  { id: "EUR", name: "EUR" },
-  { id: "JPY", name: "JPY" },
-  { id: "GBP", name: "GBP" },
-  { id: "AUD", name: "AUD" },
-  { id: "CAD", name: "CAD" },
-  { id: "CHF", name: "CHF" },
-  { id: "HKD", name: "HKD" },
-  { id: "SGD", name: "SGD" },
-  { id: "BRL", name: "BRL" },
-  { id: "PLN", name: "PLN" },
-  { id: "KRW", name: "KRW" },
-  { id: "INR", name: "INR" },
-  { id: "RUB", name: "RUB" },
-  { id: "MXN", name: "MXN" },
-  { id: "ZAR", name: "ZAR" },
-  { id: "TRY", name: "TRY" },
-  { id: "SEK", name: "SEK" },
-  { id: "NOK", name: "NOK" },
-  { id: "DKK", name: "DKK" },
-  { id: "THB", name: "THB" },
-  { id: "MYR", name: "MYR" },
-  { id: "TWD", name: "TWD" },
-  { id: "CZK", name: "CZK" },
-  { id: "HUF", name: "HUF" },
+  {id: "USD", name: "USD"},
+  {id: "CNY", name: "CNY"},
+  {id: "EUR", name: "EUR"},
+  {id: "JPY", name: "JPY"},
+  {id: "GBP", name: "GBP"},
+  {id: "AUD", name: "AUD"},
+  {id: "CAD", name: "CAD"},
+  {id: "CHF", name: "CHF"},
+  {id: "HKD", name: "HKD"},
+  {id: "SGD", name: "SGD"},
+  {id: "BRL", name: "BRL"},
+  {id: "PLN", name: "PLN"},
+  {id: "KRW", name: "KRW"},
+  {id: "INR", name: "INR"},
+  {id: "RUB", name: "RUB"},
+  {id: "MXN", name: "MXN"},
+  {id: "ZAR", name: "ZAR"},
+  {id: "TRY", name: "TRY"},
+  {id: "SEK", name: "SEK"},
+  {id: "NOK", name: "NOK"},
+  {id: "DKK", name: "DKK"},
+  {id: "THB", name: "THB"},
+  {id: "MYR", name: "MYR"},
+  {id: "TWD", name: "TWD"},
+  {id: "CZK", name: "CZK"},
+  {id: "HUF", name: "HUF"},
 ];
 
 export function getCurrencySymbol(currency) {
@@ -2422,7 +2422,7 @@ export function getCurrencyFlag(currency) {
       src={`${StaticBaseUrl}/flag-icons/${countryCode}.svg`}
       alt={`${currency} flag`}
       height={20}
-      style={{ marginRight: 5 }}
+      style={{marginRight: 5}}
     />
   );
 }
@@ -2444,7 +2444,7 @@ export function getCurrencyWithFlag(currency) {
         src={`${StaticBaseUrl}/flag-icons/${countryCode}.svg`}
         alt={`${currency} flag`}
         height={20}
-        style={{ marginRight: 5 }}
+        style={{marginRight: 5}}
       />
       {currencyText}
     </span>
@@ -2730,15 +2730,15 @@ export function getHintTextColor(themeAlgorithm) {
 export function getPrimaryButtonStyle(themeAlgorithm) {
   return isDarkTheme(themeAlgorithm)
     ? {
-        backgroundColor: "#FFFFFFE5",
-        color: "#000000E5",
-        borderColor: "transparent",
-      }
+      backgroundColor: "#FFFFFFE5",
+      color: "#000000E5",
+      borderColor: "transparent",
+    }
     : {
-        backgroundColor: "#000000E5",
-        color: "#FFFFFFE5",
-        borderColor: "transparent",
-      };
+      backgroundColor: "#000000E5",
+      color: "#FFFFFFE5",
+      borderColor: "transparent",
+    };
 }
 
 function getPreferredMfaProp(mfaProps) {
@@ -2756,7 +2756,7 @@ export function checkLoginMfa(
   params,
   handleLogin,
   componentThis,
-  requireRedirect = null,
+  requireRedirect = null
 ) {
   if (res.data === RequiredUpdatePassword) {
     goToUpdatePassword();
@@ -2779,19 +2779,19 @@ export function checkLoginMfa(
           getVerifyTotp: () =>
             renderMfaAuthVerifyForm(body, params, handleLogin, componentThis),
         });
-      },
+      }
     );
   } else if (res.data === "SelectPlan") {
     // paid-user does not have active or pending subscription, go to application default pricing page to select-plan
     const pricing = res.data2;
     goToLink(
-      `/select-plan/${pricing.owner}/${pricing.name}?user=${body.username}`,
+      `/select-plan/${pricing.owner}/${pricing.name}?user=${body.username}`
     );
   } else if (res.data === "BuyPlanResult") {
     // paid-user has pending subscription, go to buy-plan/result apge to notify payment result
     const sub = res.data2;
     goToLink(
-      `/buy-plan/${sub.owner}/${sub.pricing}/result?subscription=${sub.name}`,
+      `/buy-plan/${sub.owner}/${sub.pricing}/result?subscription=${sub.name}`
     );
   } else {
     handleLogin(res);
@@ -2834,15 +2834,15 @@ function renderMfaAuthVerifyForm(values, authParams, onSuccess, componentThis) {
           }
           let mfaI18n = "";
           switch (mfa.mfaType) {
-            case SmsMfaType:
-              mfaI18n = i18next.t("mfa:Use SMS");
-              break;
-            case TotpMfaType:
-              mfaI18n = i18next.t("mfa:Use Authenticator App");
-              break;
-            case EmailMfaType:
-              mfaI18n = i18next.t("mfa:Use Email");
-              break;
+          case SmsMfaType:
+            mfaI18n = i18next.t("mfa:Use SMS");
+            break;
+          case TotpMfaType:
+            mfaI18n = i18next.t("mfa:Use Authenticator App");
+            break;
+          case EmailMfaType:
+            mfaI18n = i18next.t("mfa:Use Email");
+            break;
           }
           return (
             <div key={mfa.mfaType}>
@@ -2867,7 +2867,7 @@ function renderMfaAuthVerifyForm(values, authParams, onSuccess, componentThis) {
 export function renderLoginPanel(
   application,
   getInnerComponent,
-  componentThis,
+  componentThis
 ) {
   return (
     <div
@@ -2878,10 +2878,10 @@ export function renderLoginPanel(
       }}
     >
       {inIframe() || isMobile() ? null : (
-        <div dangerouslySetInnerHTML={{ __html: application.formCss }} />
+        <div dangerouslySetInnerHTML={{__html: application.formCss}} />
       )}
       {inIframe() || !isMobile() ? null : (
-        <div dangerouslySetInnerHTML={{ __html: application.formCssMobile }} />
+        <div dangerouslySetInnerHTML={{__html: application.formCssMobile}} />
       )}
       <div
         className={
@@ -2892,7 +2892,7 @@ export function renderLoginPanel(
       >
         <div
           className="side-image"
-          style={{ display: application.formOffset !== 4 ? "none" : null }}
+          style={{display: application.formOffset !== 4 ? "none" : null}}
         >
           <RenderCustomHtml html={application.formSideHtml} />
         </div>
@@ -2929,10 +2929,10 @@ export function createFormAndSubmit(url, params) {
 
 export function getFormTypeOptions() {
   return [
-    { id: "users", name: "general:Users" },
-    { id: "providers", name: "application:Providers" },
-    { id: "applications", name: "general:Applications" },
-    { id: "organizations", name: "general:Organizations" },
+    {id: "users", name: "general:Users"},
+    {id: "providers", name: "application:Providers"},
+    {id: "applications", name: "general:Applications"},
+    {id: "organizations", name: "general:Organizations"},
   ];
 }
 
@@ -2951,7 +2951,7 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "120",
       },
-      { name: "name", label: "general:Name", visible: true, width: "110" },
+      {name: "name", label: "general:Name", visible: true, width: "110"},
       {
         name: "createdTime",
         label: "general:Created time",
@@ -2964,9 +2964,9 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "150",
       },
-      { name: "avatar", label: "general:Avatar", visible: true, width: "80" },
-      { name: "email", label: "general:Email", visible: true, width: "160" },
-      { name: "phone", label: "general:Phone", visible: true, width: "120" },
+      {name: "avatar", label: "general:Avatar", visible: true, width: "80"},
+      {name: "email", label: "general:Email", visible: true, width: "160"},
+      {name: "phone", label: "general:Phone", visible: true, width: "120"},
       {
         name: "affiliation",
         label: "user:Affiliation",
@@ -2979,9 +2979,9 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "140",
       },
-      { name: "type", label: "general:User type", visible: true, width: "120" },
-      { name: "tag", label: "general:Tag", visible: true, width: "110" },
-      { name: "isAdmin", label: "user:Is admin", visible: true, width: "120" },
+      {name: "type", label: "general:User type", visible: true, width: "120"},
+      {name: "tag", label: "general:Tag", visible: true, width: "110"},
+      {name: "isAdmin", label: "user:Is admin", visible: true, width: "120"},
       {
         name: "isForbidden",
         label: "user:Is forbidden",
@@ -2997,7 +2997,7 @@ export function getFormTypeItems(formType) {
     ];
   } else if (formType === "providers") {
     return [
-      { name: "name", label: "general:Name", visible: true, width: "120" },
+      {name: "name", label: "general:Name", visible: true, width: "120"},
       {
         name: "owner",
         label: "general:Organization",
@@ -3022,7 +3022,7 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "110",
       },
-      { name: "type", label: "general:Type", visible: true, width: "110" },
+      {name: "type", label: "general:Type", visible: true, width: "110"},
       {
         name: "clientId",
         label: "provider:Client ID",
@@ -3038,7 +3038,7 @@ export function getFormTypeItems(formType) {
     ];
   } else if (formType === "applications") {
     return [
-      { name: "name", label: "general:Name", visible: true, width: "150" },
+      {name: "name", label: "general:Name", visible: true, width: "150"},
       {
         name: "createdTime",
         label: "general:Created time",
@@ -3051,7 +3051,7 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "150",
       },
-      { name: "logo", label: "Logo", visible: true, width: "200" },
+      {name: "logo", label: "Logo", visible: true, width: "200"},
       {
         name: "organization",
         label: "general:Organization",
@@ -3067,7 +3067,7 @@ export function getFormTypeItems(formType) {
     ];
   } else if (formType === "organizations") {
     return [
-      { name: "name", label: "general:Name", visible: true, width: "120" },
+      {name: "name", label: "general:Name", visible: true, width: "120"},
       {
         name: "createdTime",
         label: "general:Created time",
@@ -3080,7 +3080,7 @@ export function getFormTypeItems(formType) {
         visible: true,
         width: "150",
       },
-      { name: "favicon", label: "general:Favicon", visible: true, width: "50" },
+      {name: "favicon", label: "general:Favicon", visible: true, width: "50"},
       {
         name: "websiteUrl",
         label: "organization:Website URL",
@@ -3248,7 +3248,7 @@ export function getApiPaths() {
   res.push(
     "login/oauth/access_token",
     "login/oauth/refresh_token",
-    "login/oauth/introspect",
+    "login/oauth/introspect"
   );
 
   // Verification and communication APIs
@@ -3292,9 +3292,9 @@ export function getVersionInfo(text, siteName) {
       versionText += ` (ahead+${versionInfo?.commitOffset})`;
     }
 
-    return { text: versionText, link: link };
+    return {text: versionText, link: link};
   } catch (e) {
-    return { text: "", link: "" };
+    return {text: "", link: ""};
   }
 }
 

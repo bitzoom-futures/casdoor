@@ -57,7 +57,9 @@ code {
   padding: 8px 12px !important;
 }
 
-/* Size the small toolbar buttons in table title bars (Add, Upload, ...) like default buttons, matching the row action buttons */
+/* Size the small toolbar buttons in table title bars (Add, Upload, ...) */
+
+/* Keep them like default buttons, matching the row action buttons */
 .ant-table-title .ant-btn-sm {
   height: 32px;
   padding-inline: 15px;
@@ -262,4 +264,113 @@ a[href^="mailto:"]:active {
 .ant-input-affix-wrapper-lg,
 .ant-input-group-addon {
   border-radius: 8px !important;
+}
+
+/* 移动端（App WebView）登录页样式 */
+
+/* !important: antd's runtime-injected .ant-divider-with-text rule sets display: flex and wins otherwise */
+.login-mobile-title,
+.login-more-divider {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  .login-content {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  /* doubled class outranks the single-class rules in App.less (imported after this file) */
+  .login-panel.login-panel,
+  .login-panel-dark.login-panel-dark {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    box-shadow: none;
+  }
+
+  .login-form.login-form {
+    width: 100%;
+    padding: 24px;
+    text-align: left;
+  }
+
+  /* full width (beats inline 400px), flex column so the providers box can pin to the bottom */
+  .login-form form.ant-form {
+    width: 100% !important;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 48px);
+  }
+
+  /* pins divider + provider buttons to the bottom */
+  .login-providers-box {
+    margin-top: auto;
+  }
+
+  .login-mobile-title {
+    display: block !important;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 8px 0 24px;
+  }
+
+  .login-panel .login-mobile-title {
+    color: #000000e5;
+  }
+
+  .login-panel-dark .login-mobile-title {
+    color: #ffffffe5;
+  }
+
+  /* native app provides chrome; org language switching handled natively */
+  .login-logo-box,
+  .back-button,
+  .login-languages {
+    display: none;
+  }
+
+  /* "Powered by Casdoor" footer from App.js renderFooter */
+  #footer {
+    display: none;
+  }
+
+  /* tabs: left-aligned; ink bar (indicator) kept at antd default */
+  .signin-methods .ant-tabs-nav-wrap {
+    justify-content: flex-start !important;
+  }
+
+  .login-button-box .login-button,
+  .login-form .signup-button {
+    width: 100%;
+    height: 48px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  /* signup page renders the logo/language selector directly (not via signin items) */
+  .login-form .panel-logo,
+  .login-form > .select-box {
+    display: none;
+  }
+
+  .login-more-divider {
+    display: flex !important;
+    font-size: 13px;
+  }
+
+  .login-panel .login-more-divider {
+    color: rgb(0 0 0 / 45%);
+  }
+
+  .login-panel-dark .login-more-divider {
+    color: #fff6;
+  }
+
+  /* the form is text-align: left on mobile; keep the provider icons centered */
+  .login-providers-box,
+  .login-providers-box .ant-form-item-control-input-content {
+    text-align: center;
+  }
 }

@@ -15,6 +15,7 @@
 import React from "react";
 import {
   Button,
+  Divider,
   Form,
   Input,
   Popover,
@@ -22,25 +23,27 @@ import {
   Result,
   Row,
   Select,
-  message,
+  message
 } from "antd";
 import * as Setting from "../Setting";
 import * as AuthBackend from "./AuthBackend";
 import * as ProviderButton from "./ProviderButton";
 import i18next from "i18next";
 import * as Util from "./Util";
-import { authConfig } from "./Auth";
+import {authConfig} from "./Auth";
 import * as ApplicationBackend from "../backend/ApplicationBackend";
 import * as AgreementModal from "../common/modal/AgreementModal";
-import { SendCodeInput } from "../common/SendCodeInput";
+import {SendCodeInput} from "../common/SendCodeInput";
 import RegionSelect from "../common/select/RegionSelect";
 import CustomGithubCorner from "../common/CustomGithubCorner";
 import LanguageSelect from "../common/select/LanguageSelect";
-import { withRouter } from "react-router-dom";
-import { CountryCodeSelect } from "../common/select/CountryCodeSelect";
+import {withRouter} from "react-router-dom";
+import {CountryCodeSelect} from "../common/select/CountryCodeSelect";
 import * as PasswordChecker from "../common/PasswordChecker";
 import * as InvitationBackend from "../backend/InvitationBackend";
-import { CaptchaModal } from "../common/modal/CaptchaModal";
+import {CaptchaModal} from "../common/modal/CaptchaModal";
+
+const commonRules = [];
 
 const formItemLayout = {
   labelCol: {
@@ -68,7 +71,7 @@ const renderFormItem = (signupItem) => {
       {
         required: signupItem.required,
         message: i18next.t(
-          `signup:Please input your ${signupItem.label || signupItem.name}!`,
+          `signup:Please input your ${signupItem.label || signupItem.name}!`
         ),
       },
     ],
@@ -80,7 +83,7 @@ const renderFormItem = (signupItem) => {
       inputRules.push({
         pattern: new RegExp(signupItem.regex),
         message: i18next.t(
-          "signup:The input doesn't match the signup item regex!",
+          "signup:The input doesn't match the signup item regex!"
         ),
       });
     }
@@ -160,7 +163,7 @@ class SignupPage extends React.Component {
     if (oAuthParams !== null) {
       const signinUrl = window.location.pathname.replace(
         "/signup/oauth/authorize",
-        "/login/oauth/authorize",
+        "/login/oauth/authorize"
       );
       sessionStorage.setItem("signinUrl", signinUrl + window.location.search);
     }
@@ -176,7 +179,7 @@ class SignupPage extends React.Component {
           "error",
           `${i18next.t("general:Unknown application name")}: ${
             this.state.applicationName
-          }`,
+          }`
         );
         this.onUpdateApplication(null);
       }
@@ -187,7 +190,7 @@ class SignupPage extends React.Component {
     const sp = new URLSearchParams(window.location.search);
     if (sp.has("invitationCode")) {
       const invitationCode = sp.get("invitationCode");
-      this.setState({ invitationCode: invitationCode });
+      this.setState({invitationCode: invitationCode});
       if (invitationCode !== "") {
         let appName = this.state.applicationName;
         if (application) {
@@ -235,14 +238,14 @@ class SignupPage extends React.Component {
           Setting.showMessage("error", res.msg);
           return;
         }
-        this.setState({ invitation: res.data });
+        this.setState({invitation: res.data});
         if (res.data.email) {
-          this.setState({ validEmail: true, email: res.data.email });
+          this.setState({validEmail: true, email: res.data.email});
         }
         if (res.data.phone) {
-          this.setState({ validPhone: true, phone: res.data.phone });
+          this.setState({validPhone: true, phone: res.data.phone});
         }
-      },
+      }
     );
   }
 
@@ -272,6 +275,9 @@ class SignupPage extends React.Component {
   }
 
   onUpdateApplication(application) {
+    if (application !== null) {
+      application.logo = Setting.getLogo(this.props.themeAlgorithm);
+    }
     this.props.onUpdateApplication(application);
   }
 
@@ -327,9 +333,9 @@ class SignupPage extends React.Component {
         <LanguageSelect
           languages={languages}
           mode={languagesItem?.rule}
-          style={{ top: "55px", right: "5px", position: "absolute" }}
+          style={{top: "55px", right: "5px", position: "absolute"}}
           onClick={(key) => {
-            this.setState({ userLang: key });
+            this.setState({userLang: key});
             Setting.setSigninLanguage(key);
           }}
         />
@@ -361,7 +367,7 @@ class SignupPage extends React.Component {
     let provider = null;
 
     const ruleProviders = captchaProviderItems.filter(
-      (providerItem) => providerItem.rule === captchaRule,
+      (providerItem) => providerItem.rule === captchaRule
     );
     if (ruleProviders.length > 0) {
       provider = ruleProviders[0].provider;
@@ -383,9 +389,9 @@ class SignupPage extends React.Component {
           values["clientSecret"] = clientSecret;
 
           this.submitSignup(values);
-          this.setState({ openCaptchaModal: false });
+          this.setState({openCaptchaModal: false});
         }}
-        onCancel={() => this.setState({ openCaptchaModal: false })}
+        onCancel={() => this.setState({openCaptchaModal: false})}
         isCurrentProvider={true}
       />
     );
@@ -470,7 +476,7 @@ class SignupPage extends React.Component {
         ) {
           // Consent required, redirect to consent page
           Setting.goToLink(
-            `/consent/${application.name}?${window.location.search.substring(1)}`,
+            `/consent/${application.name}?${window.location.search.substring(1)}`
           );
           return;
         }
@@ -492,12 +498,12 @@ class SignupPage extends React.Component {
               this.onUpdateAccount(account);
               Setting.goToLinkSoft(
                 this,
-                this.getResultPath(application, values),
+                this.getResultPath(application, values)
               );
             } else {
               Setting.showMessage(
                 "error",
-                `${i18next.t("application:Failed to sign in")}: ${res.msg}`,
+                `${i18next.t("application:Failed to sign in")}: ${res.msg}`
               );
             }
           });
@@ -538,7 +544,7 @@ class SignupPage extends React.Component {
         usernameRules.push({
           pattern: new RegExp(signupItem.regex),
           message: i18next.t(
-            "signup:The input doesn't match the signup item regex!",
+            "signup:The input doesn't match the signup item regex!"
           ),
         });
       }
@@ -587,7 +593,7 @@ class SignupPage extends React.Component {
           const regexRule = {
             pattern: new RegExp(signupItem.regex),
             message: i18next.t(
-              "signup:The input doesn't match the signup item regex!",
+              "signup:The input doesn't match the signup item regex!"
             ),
           };
           firstNameRules.push(regexRule);
@@ -655,7 +661,7 @@ class SignupPage extends React.Component {
         displayNameRules.push({
           pattern: new RegExp(signupItem.regex),
           message: i18next.t(
-            "signup:The input doesn't match the signup item regex!",
+            "signup:The input doesn't match the signup item regex!"
           ),
         });
       }
@@ -705,7 +711,7 @@ class SignupPage extends React.Component {
         firstNameRules.push({
           pattern: new RegExp(signupItem.regex),
           message: i18next.t(
-            "signup:The input doesn't match the signup item regex!",
+            "signup:The input doesn't match the signup item regex!"
           ),
         });
       }
@@ -747,7 +753,7 @@ class SignupPage extends React.Component {
         lastNameRules.push({
           pattern: new RegExp(signupItem.regex),
           message: i18next.t(
-            "signup:The input doesn't match the signup item regex!",
+            "signup:The input doesn't match the signup item regex!"
           ),
         });
       }
@@ -786,7 +792,7 @@ class SignupPage extends React.Component {
         affiliationRules.push({
           pattern: new RegExp(signupItem.regex),
           message: i18next.t(
-            "signup:The input doesn't match the signup item regex!",
+            "signup:The input doesn't match the signup item regex!"
           ),
         });
       }
@@ -828,10 +834,10 @@ class SignupPage extends React.Component {
               required: required,
               pattern: new RegExp(
                 /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9X]$/,
-                "g",
+                "g"
               ),
               message: i18next.t(
-                "signup:Please input the correct ID card number!",
+                "signup:Please input the correct ID card number!"
               ),
             },
           ]}
@@ -860,7 +866,7 @@ class SignupPage extends React.Component {
           <RegionSelect
             className="signup-region-select"
             onChange={(value) => {
-              this.setState({ region: value });
+              this.setState({region: value});
             }}
           />
         </Form.Item>
@@ -920,25 +926,25 @@ class SignupPage extends React.Component {
                       this.state.email !== "" &&
                       !Setting.isValidEmail(this.state.email)
                     ) {
-                      this.setState({ validEmail: false });
+                      this.setState({validEmail: false});
                       return Promise.reject(
-                        i18next.t("login:The input is not valid Email!"),
+                        i18next.t("login:The input is not valid Email!")
                       );
                     }
 
                     if (signupItem.regex) {
                       const reg = new RegExp(signupItem.regex);
                       if (!reg.test(this.state.email)) {
-                        this.setState({ validEmail: false });
+                        this.setState({validEmail: false});
                         return Promise.reject(
                           i18next.t(
-                            "signup:The input Email doesn't match the signup item regex!",
-                          ),
+                            "signup:The input Email doesn't match the signup item regex!"
+                          )
                         );
                       }
                     }
 
-                    this.setState({ validEmail: true });
+                    this.setState({validEmail: true});
                     return Promise.resolve();
                   },
                 },
@@ -957,7 +963,7 @@ class SignupPage extends React.Component {
                   this.state.invitation.email !== ""
                 }
                 defaultValue={this.state.email}
-                onChange={(e) => this.setState({ email: e.target.value })}
+                onChange={(e) => this.setState({email: e.target.value})}
               />
             </Form.Item>
             {signupItem.rule !== "No verification" && (
@@ -968,7 +974,7 @@ class SignupPage extends React.Component {
                   {
                     required: required,
                     message: i18next.t(
-                      "code:Please input your verification code!",
+                      "code:Please input your verification code!"
                     ),
                   },
                 ]}
@@ -1002,13 +1008,13 @@ class SignupPage extends React.Component {
                     {
                       required: required,
                       message: i18next.t(
-                        "signup:Please select your country code!",
+                        "signup:Please select your country code!"
                       ),
                     },
                   ]}
                 >
                   <CountryCodeSelect
-                    style={{ width: "35%" }}
+                    style={{width: "35%"}}
                     countryCodes={
                       this.getApplicationObj().organizationObj.countryCodes
                     }
@@ -1022,10 +1028,10 @@ class SignupPage extends React.Component {
                     {
                       required: required,
                       message: i18next.t(
-                        "signup:Please input your phone number!",
+                        "signup:Please input your phone number!"
                       ),
                     },
-                    ({ getFieldValue }) => ({
+                    ({getFieldValue}) => ({
                       validator: (_, value) => {
                         if (!required && !value) {
                           return Promise.resolve();
@@ -1035,16 +1041,16 @@ class SignupPage extends React.Component {
                           value &&
                           !Setting.isValidPhone(
                             value,
-                            getFieldValue("countryCode"),
+                            getFieldValue("countryCode")
                           )
                         ) {
-                          this.setState({ validPhone: false });
+                          this.setState({validPhone: false});
                           return Promise.reject(
-                            i18next.t("signup:The input is not valid Phone!"),
+                            i18next.t("signup:The input is not valid Phone!")
                           );
                         }
 
-                        this.setState({ validPhone: true });
+                        this.setState({validPhone: true});
                         return Promise.resolve();
                       },
                     }),
@@ -1058,12 +1064,12 @@ class SignupPage extends React.Component {
                         ? signupItem.label
                         : i18next.t("general:Phone")
                     }
-                    style={{ width: "65%" }}
+                    style={{width: "65%"}}
                     disabled={
                       this.state.invitation !== undefined &&
                       this.state.invitation.phone !== ""
                     }
-                    onChange={(e) => this.setState({ phone: e.target.value })}
+                    onChange={(e) => this.setState({phone: e.target.value})}
                   />
                 </Form.Item>
               </Input.Group>
@@ -1076,7 +1082,7 @@ class SignupPage extends React.Component {
                   {
                     required: required,
                     message: i18next.t(
-                      "code:Please input your phone verification code!",
+                      "code:Please input your phone verification code!"
                     ),
                   },
                 ]}
@@ -1115,9 +1121,9 @@ class SignupPage extends React.Component {
 
         return (
           <React.Fragment>
-            <Row style={{ marginTop: "30px", marginBottom: "20px" }}>
+            <Row style={{marginTop: "30px", marginBottom: "20px"}}>
               <Radio.Group
-                style={{ width: "400px" }}
+                style={{width: "400px"}}
                 buttonStyle="solid"
                 onChange={(e) => {
                   this.setState({
@@ -1172,7 +1178,7 @@ class SignupPage extends React.Component {
                 validator: (rule, value) => {
                   const errorMsg = PasswordChecker.checkPasswordComplexity(
                     value,
-                    application.organizationObj.passwordOptions,
+                    application.organizationObj.passwordOptions
                   );
                   if (errorMsg === "") {
                     return Promise.resolve();
@@ -1196,7 +1202,7 @@ class SignupPage extends React.Component {
                 this.setState({
                   passwordPopover: PasswordChecker.renderPasswordPopover(
                     application.organizationObj.passwordOptions,
-                    e.target.value,
+                    e.target.value
                   ),
                 });
               }}
@@ -1206,7 +1212,7 @@ class SignupPage extends React.Component {
                     application.organizationObj.passwordOptions?.length > 0,
                   passwordPopover: PasswordChecker.renderPasswordPopover(
                     application.organizationObj.passwordOptions,
-                    this.form.current?.getFieldValue("password") ?? "",
+                    this.form.current?.getFieldValue("password") ?? ""
                   ),
                 });
               }}
@@ -1231,7 +1237,7 @@ class SignupPage extends React.Component {
               required: required,
               message: i18next.t("signup:Please confirm your password!"),
             },
-            ({ getFieldValue }) => ({
+            ({getFieldValue}) => ({
               validator(rule, value) {
                 if (!value || getFieldValue("password") === value) {
                   return Promise.resolve();
@@ -1239,8 +1245,8 @@ class SignupPage extends React.Component {
 
                 return Promise.reject(
                   i18next.t(
-                    "signup:Your confirmed password is inconsistent with the password!",
-                  ),
+                    "signup:Your confirmed password is inconsistent with the password!"
+                  )
                 );
               },
             }),
@@ -1286,10 +1292,10 @@ class SignupPage extends React.Component {
         application,
         required,
         tailFormItemLayout,
-        this,
+        this
       );
     } else if (signupItem.name.startsWith("Text ")) {
-      return <div dangerouslySetInnerHTML={{ __html: signupItem.label }} />;
+      return <div dangerouslySetInnerHTML={{__html: signupItem.label}} />;
     } else if (signupItem.name === "Signup button") {
       return (
         <Form.Item {...tailFormItemLayout}>
@@ -1297,24 +1303,29 @@ class SignupPage extends React.Component {
             type="primary"
             htmlType="submit"
             className="signup-button"
-            style={Setting.getPrimaryButtonStyle(this.props.themeAlgorithm)}
+            style={{
+              ...Setting.getPrimaryButtonStyle(this.props.themeAlgorithm),
+              width: "100%",
+            }}
           >
             {i18next.t("account:Sign Up")}
           </Button>
-          &nbsp;&nbsp;{i18next.t("signup:Have account?")}&nbsp;
-          <a
-            className="signup-link"
-            onClick={() => {
-              const linkInStorage = sessionStorage.getItem("signinUrl");
-              if (linkInStorage !== null && linkInStorage !== "") {
-                Setting.goToLinkSoft(this, linkInStorage);
-              } else {
-                Setting.redirectToLoginPage(application, this.props.history);
-              }
-            }}
-          >
-            {i18next.t("signup:sign in now")}
-          </a>
+          <div style={{marginTop: "14px"}}>
+            {i18next.t("signup:Have account?")}
+            <a
+              className="signup-link"
+              onClick={() => {
+                const linkInStorage = sessionStorage.getItem("signinUrl");
+                if (linkInStorage !== null && linkInStorage !== "") {
+                  Setting.goToLinkSoft(this, linkInStorage);
+                } else {
+                  Setting.redirectToLoginPage(application, this.props.history);
+                }
+              }}
+            >
+              {i18next.t("signup:sign in now")}
+            </a>
+          </div>
         </Form.Item>
       );
     } else if (signupItem.name === "Providers") {
@@ -1326,16 +1337,19 @@ class SignupPage extends React.Component {
       if (signupItem.rule === "None" || signupItem.rule === "") {
         signupItem.rule = showForm ? "small" : "big";
       }
-      return application.providers
+      const hasVisibleProviders = (application.providers ?? []).some(
+        (providerItem) => this.isProviderVisible(providerItem)
+      );
+      const providerButtons = application.providers
         .filter((providerItem) => this.isProviderVisible(providerItem))
         .map((providerItem, id) => {
           return (
-            <span
+            <Button
+              variant="outlined"
               key={id}
               onClick={(e) => {
                 const agreementChecked =
                   this.form.current.getFieldValue("agreement");
-
                 if (
                   agreementChecked !== undefined &&
                   typeof agreementChecked === "boolean" &&
@@ -1343,22 +1357,51 @@ class SignupPage extends React.Component {
                 ) {
                   e.preventDefault();
                   message.error(
-                    i18next.t("signup:Please accept the agreement!"),
+                    i18next.t("signup:Please accept the agreement!")
                   );
                 }
               }}
+              style={{width: "100%"}}
             >
               {ProviderButton.renderProviderLogo(
                 providerItem.provider,
                 application,
-                null,
+                24,
                 null,
                 signupItem.rule,
-                this.props.location,
+                this.props.location
               )}
-            </span>
+              {providerItem.provider.type === "Google" ? (
+                <span
+                  style={{
+                    margin: "0 0 0 4px",
+                    lineHeight: "24px",
+                    fontSize: "16px",
+                  }}
+                >
+                  {i18next
+                    .t("signup:Sign up with {type}")
+                    .replace(
+                      "{type}",
+                      providerItem.provider.type !== ""
+                        ? providerItem.provider.type
+                        : providerItem.provider.displayName
+                    )}
+                </span>
+              ) : null}
+            </Button>
           );
         });
+      return (
+        <React.Fragment>
+          {showForm && hasVisibleProviders ? (
+            <Divider className="login-more-divider" plain>
+              {i18next.t("signup:More sign-up methods")}
+            </Divider>
+          ) : null}
+          {providerButtons}
+        </React.Fragment>
+      );
     } else if (validItems.includes(signupItem.name)) {
       return renderFormItem(signupItem);
     }
@@ -1371,7 +1414,7 @@ class SignupPage extends React.Component {
           status="error"
           title={i18next.t("application:Sign Up Error")}
           subTitle={i18next.t(
-            "application:The application does not allow to sign up new account",
+            "application:The application does not allow to sign up new account"
           )}
           extra={[
             <Button
@@ -1391,7 +1434,7 @@ class SignupPage extends React.Component {
       if (this.state.invitation.username !== "") {
         this.form.current?.setFieldValue(
           "username",
-          this.state.invitation.username,
+          this.state.invitation.username
         );
       }
       if (this.state.invitation.email !== "") {
@@ -1403,16 +1446,16 @@ class SignupPage extends React.Component {
       if (this.state.invitationCode !== "") {
         this.form.current?.setFieldValue(
           "invitationCode",
-          this.state.invitationCode,
+          this.state.invitationCode
         );
       }
     }
 
     const displayNameItem = application.signupItems?.find(
-      (item) => item.name === "Display name",
+      (item) => item.name === "Display name"
     );
     if (displayNameItem && !this.state.displayNameRule) {
-      this.setState({ displayNameRule: displayNameItem.rule });
+      this.setState({displayNameRule: displayNameItem.rule});
     }
 
     return (
@@ -1425,7 +1468,7 @@ class SignupPage extends React.Component {
           this.onFinishFailed(
             errorInfo.values,
             errorInfo.errorFields,
-            errorInfo.outOfDate,
+            errorInfo.outOfDate
           )
         }
         initialValues={{
@@ -1435,8 +1478,9 @@ class SignupPage extends React.Component {
         }}
         size="large"
         layout={Setting.isMobile() ? "vertical" : "horizontal"}
-        style={{ width: Setting.isMobile() ? "300px" : "400px" }}
+        style={{width: Setting.isMobile() ? "300px" : "400px"}}
       >
+        <div className="login-mobile-title">{i18next.t("account:Sign Up")}</div>
         <Form.Item
           name="application"
           hidden={true}
@@ -1459,7 +1503,14 @@ class SignupPage extends React.Component {
         ></Form.Item>
         {application.signupItems?.map((signupItem, idx) => {
           return (
-            <div key={idx}>
+            <div
+              key={idx}
+              className={
+                signupItem.name === "Providers"
+                  ? "login-providers-box"
+                  : undefined
+              }
+            >
               <div
                 dangerouslySetInnerHTML={{
                   __html: "<style>" + signupItem.customCss + "</style>",
@@ -1530,7 +1581,7 @@ class SignupPage extends React.Component {
           >
             <div
               className="side-image"
-              style={{ display: application.formOffset !== 4 ? "none" : null }}
+              style={{display: application.formOffset !== 4 ? "none" : null}}
             >
               <Setting.RenderCustomHtml html={application.formSideHtml} />
             </div>
