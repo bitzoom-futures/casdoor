@@ -1369,7 +1369,7 @@ class LoginPage extends React.Component {
                       null,
                       signinItem.rule,
                       this.props.location,
-                      undefined,
+                      this.state.mode ?? "signup",
                       i18next
                         .t("signup:Sign up with {type}")
                         .replace(
