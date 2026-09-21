@@ -24,11 +24,20 @@ import * as serviceWorker from "./serviceWorker";
 import {BrowserRouter} from "react-router-dom";
 import ErrorBoundary from "./common/ErrorBoundary";
 import "./backend/FetchFilter";
+import * as Setting from "./Setting";
 
 if (!String.prototype.replaceAll) {
   String.prototype.replaceAll = function(search, replace) {
     return this.split(search).join(replace);
   };
+}
+
+// The mobile login/signup styles in index.css key off this class. It is set here,
+// before the first paint, so the desktop layout never flashes on a phone.
+// Setting.isMobile() is the same check LoginPage/SignupPage use to pick
+// formCssMobile and the mobile form layout.
+if (Setting.isMobile()) {
+  document.body.classList.add("is-mobile-device");
 }
 
 const container = document.getElementById("root");
