@@ -8,7 +8,7 @@ module.exports = {
     },
     proxy: {
       "/api": {
-        target: "http://auth1.riverwa.com",
+        target: "https://auth1.riverwa.com",
         changeOrigin: true,
       },
       "/swagger": {
